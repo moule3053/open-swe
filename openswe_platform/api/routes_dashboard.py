@@ -9,7 +9,7 @@ import uuid
 from datetime import UTC
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -39,6 +39,16 @@ async def get_me(auth: AuthContext = Depends(get_auth)) -> dict[str, Any]:
         "is_admin": True,
         "slack_oauth_enabled": False,
     }
+
+
+@router.get("/my-mapping")
+async def get_my_mapping() -> dict[str, Any]:
+    return {"login": "moule3053", "github_login": "moule3053"}
+
+
+@router.get("/repos")
+async def get_repos() -> dict[str, Any]:
+    return {"repos": ["moule3053/open-swe"]}
 
 
 @router.get("/options")
@@ -238,6 +248,155 @@ async def get_thread(
     )
     db_messages = list(msg_result.scalars().all())
     return task_to_agent_thread(task, db_messages)
+
+
+@router.get("/threads/{thread_id}/state")
+async def get_thread_state(
+    thread_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth),
+) -> dict[str, Any]:
+    try:
+        task_id = uuid.UUID(thread_id)
+        task = await db.get(Task, task_id)
+    except ValueError:
+        result = await db.execute(
+            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
+        )
+        task = result.scalars().first()
+
+    if task is None:
+        return {"values": {"messages": []}, "next": []}
+
+    msg_result = await db.execute(
+        select(Message).where(Message.task_id == task.task_id).order_by(Message.seq)
+    )
+    db_messages = list(msg_result.scalars().all())
+
+    messages = []
+    for m in db_messages:
+        messages.append(
+            {
+                "type": m.role
+                if m.role in {"human", "ai", "system"}
+                else "human"
+                if m.role == "user"
+                else "ai",
+                "id": str(m.message_id),
+                "content": m.content,
+            }
+        )
+
+    return {
+        "values": {"messages": messages},
+        "next": [] if task.status in {"succeeded", "failed", "cancelled"} else ["agent"],
+    }
+
+
+@router.post("/threads/{thread_id}/history")
+async def post_thread_history(
+    thread_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth),
+) -> list[dict[str, Any]]:
+    try:
+        task_id = uuid.UUID(thread_id)
+        task = await db.get(Task, task_id)
+    except ValueError:
+        result = await db.execute(
+            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
+        )
+        task = result.scalars().first()
+
+    if task is None:
+        return []
+
+    msg_result = await db.execute(
+        select(Message).where(Message.task_id == task.task_id).order_by(Message.seq)
+    )
+    db_messages = list(msg_result.scalars().all())
+
+    messages = []
+    for m in db_messages:
+        messages.append(
+            {
+                "type": m.role
+                if m.role in {"human", "ai", "system"}
+                else "human"
+                if m.role == "user"
+                else "ai",
+                "id": str(m.message_id),
+                "content": m.content,
+            }
+        )
+
+    return [{"values": {"messages": messages}, "checkpoint": {}}]
+
+
+@router.post("/threads/{thread_id}/commands")
+async def post_thread_commands(
+    thread_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth),
+) -> dict[str, Any]:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    method = body.get("method")
+    params = body.get("params", {})
+    run_input = params.get("input", {}) or {}
+
+    content = ""
+    messages = run_input.get("messages", [])
+    if messages and isinstance(messages, list):
+        content = messages[-1].get("content") or ""
+
+    try:
+        task_id = uuid.UUID(thread_id)
+        task = await db.get(Task, task_id)
+    except ValueError:
+        result = await db.execute(
+            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
+        )
+        task = result.scalars().first()
+
+    settings = get_settings()
+    if task is None:
+        from openswe_platform.api.routes_tasks import create_task
+
+        task = await create_task(
+            db,
+            org_id=auth.org_id,
+            user_id=auth.user_id,
+            title=content[:100] if content else "New Chat Run",
+            prompt=content,
+            repo="moule3053/open-swe",
+            base_ref="main",
+            source="chat",
+            source_ref=None,
+            thread_id=thread_id,
+            agent_type="coding",
+            model=settings.default_model,
+            sandbox_provider=settings.default_sandbox_provider,
+            mcp_server_ids=[],
+            mcp_mode="auto",
+            metadata={},
+            platform_default_model=settings.default_model,
+        )
+        await db.commit()
+
+    if content and method in {"run.start", "input.respond"}:
+        await add_message(db, task_id=task.task_id, content=content, kind="user_guidance")
+        await db.commit()
+
+    return {
+        "id": str(task.task_id),
+        "thread_id": thread_id,
+        "status": "running",
+    }
 
 
 @router.post("/threads/{thread_id}/messages")
