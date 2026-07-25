@@ -16,6 +16,7 @@ from openswe_platform.api.routes_dashboard import (
     get_sidebar_threads,
     task_to_agent_thread,
 )
+from openswe_platform.common.config import get_settings
 from openswe_platform.common.models import Task
 
 
@@ -31,7 +32,7 @@ async def test_get_me():
 async def test_get_options():
     res = await get_options()
     assert len(res["models"]) > 0
-    assert res["default_agent_model"] == "gpt-4o"
+    assert res["default_agent_model"] == get_settings().default_model
 
 
 @pytest.mark.asyncio

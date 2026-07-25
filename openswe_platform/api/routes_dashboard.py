@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from openswe_platform.api.deps import AuthContext, get_auth, get_db
 from openswe_platform.api.routes_tasks import add_message, cancel_task, decide_approval
+from openswe_platform.common.config import get_settings
 from openswe_platform.common.enums import ApprovalStatus
 from openswe_platform.common.models import Approval, Message, RunEvent, Task
 
@@ -42,33 +43,63 @@ async def get_me(auth: AuthContext = Depends(get_auth)) -> dict[str, Any]:
 
 @router.get("/options")
 async def get_options() -> dict[str, Any]:
+    settings = get_settings()
+    default_model = settings.default_model or "google:gemini-3.5-flash"
     return {
         "models": [
             {
-                "id": "gpt-4o",
+                "id": "google:gemini-3.5-flash",
+                "label": "Gemini 3.5 Flash",
+                "efforts": ["minimal", "low", "medium", "high"],
+                "default_effort": "medium",
+                "supports_images": True,
+            },
+            {
+                "id": "google_genai:gemini-3.5-flash",
+                "label": "Gemini 3.5 Flash (GenAI)",
+                "efforts": ["minimal", "low", "medium", "high"],
+                "default_effort": "medium",
+                "supports_images": True,
+            },
+            {
+                "id": "openai:gpt-4o",
                 "label": "GPT-4o",
                 "efforts": [],
                 "default_effort": "",
                 "supports_images": True,
             },
             {
-                "id": "claude-3-5-sonnet",
+                "id": "openai:gpt-4o-mini",
+                "label": "GPT-4o Mini",
+                "efforts": [],
+                "default_effort": "",
+                "supports_images": True,
+            },
+            {
+                "id": "anthropic:claude-3-5-sonnet",
                 "label": "Claude 3.5 Sonnet",
                 "efforts": [],
                 "default_effort": "",
                 "supports_images": True,
             },
             {
-                "id": "o1",
+                "id": "anthropic:claude-sonnet-5",
+                "label": "Claude Sonnet 5",
+                "efforts": ["low", "medium", "high", "xhigh", "max"],
+                "default_effort": "high",
+                "supports_images": True,
+            },
+            {
+                "id": "openai:o1",
                 "label": "o1",
                 "efforts": ["low", "medium", "high"],
                 "default_effort": "medium",
                 "supports_images": False,
             },
         ],
-        "default_agent_model": "gpt-4o",
+        "default_agent_model": default_model,
         "default_agent_reasoning_effort": "medium",
-        "default_agent_subagent_model": "gpt-4o",
+        "default_agent_subagent_model": default_model,
         "default_agent_subagent_reasoning_effort": "medium",
     }
 
