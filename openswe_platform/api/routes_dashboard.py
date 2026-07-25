@@ -26,6 +26,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard/api", tags=["dashboard"])
 
 
+async def _get_task_by_id_or_thread_id(
+    db: AsyncSession, org_id: uuid.UUID, thread_id: str
+) -> Task | None:
+    result = await db.execute(
+        select(Task).where(Task.org_id == org_id, Task.thread_id == thread_id)
+    )
+    task = result.scalars().first()
+    if task:
+        return task
+
+    try:
+        task_id = uuid.UUID(thread_id)
+        task = await db.get(Task, task_id)
+        if task and task.org_id == org_id:
+            return task
+    except ValueError:
+        pass
+
+    return None
+
+
 class DashboardMessageRequest(BaseModel):
     content: str
 
@@ -229,16 +250,8 @@ async def get_thread(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
-
-    if task is None or task.org_id != auth.org_id:
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
+    if task is None:
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail="Task not found")
@@ -256,15 +269,7 @@ async def get_thread_state(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
-
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
     if task is None:
         return {"values": {"messages": []}, "next": []}
 
@@ -299,15 +304,7 @@ async def post_thread_history(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> list[dict[str, Any]]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
-
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
     if task is None:
         return []
 
@@ -352,16 +349,19 @@ async def post_thread_commands(
     content = ""
     messages = run_input.get("messages", [])
     if messages and isinstance(messages, list):
-        content = messages[-1].get("content") or ""
+        content_raw = messages[-1].get("content") or ""
+        if isinstance(content_raw, list):
+            text_parts = []
+            for block in content_raw:
+                if isinstance(block, dict):
+                    text_parts.append(block.get("text") or "")
+                elif isinstance(block, str):
+                    text_parts.append(block)
+            content = "".join(text_parts)
+        else:
+            content = str(content_raw)
 
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
 
     settings = get_settings()
     if task is None:
@@ -375,14 +375,14 @@ async def post_thread_commands(
             prompt=content,
             repo="moule3053/open-swe",
             base_ref="main",
-            source="chat",
+            source="web_ui",
             source_ref=None,
             thread_id=thread_id,
             agent_type="coding",
             model=settings.default_model,
             sandbox_provider=settings.default_sandbox_provider,
             mcp_server_ids=[],
-            mcp_mode="auto",
+            mcp_mode="inherit",
             metadata={},
             platform_default_model=settings.default_model,
         )
@@ -406,14 +406,7 @@ async def post_thread_message(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
 
     if task is None or task.org_id != auth.org_id:
         from fastapi import HTTPException
@@ -436,14 +429,7 @@ async def post_cancel_thread(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
 
     if task is None or task.org_id != auth.org_id:
         from fastapi import HTTPException
@@ -529,14 +515,7 @@ async def list_thread_workflow_approvals(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
 
     if task is None or task.org_id != auth.org_id:
         from fastapi import HTTPException
@@ -571,14 +550,7 @@ async def approve_workflow_push_fingerprint(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
 
     if task is None or task.org_id != auth.org_id:
         from fastapi import HTTPException
@@ -614,14 +586,7 @@ async def reject_workflow_push_fingerprint(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
-    try:
-        task_id = uuid.UUID(thread_id)
-        task = await db.get(Task, task_id)
-    except ValueError:
-        result = await db.execute(
-            select(Task).where(Task.org_id == auth.org_id, Task.thread_id == thread_id)
-        )
-        task = result.scalars().first()
+    task = await _get_task_by_id_or_thread_id(db, auth.org_id, thread_id)
 
     if task is None or task.org_id != auth.org_id:
         from fastapi import HTTPException
