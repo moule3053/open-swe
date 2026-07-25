@@ -86,7 +86,7 @@ services:
       API_AUTH_DISABLED: ${API_AUTH_DISABLED:-true}
       PLATFORM_API_TOKEN: ${PLATFORM_API_TOKEN:-}
       PLATFORM_JWT_SECRET: ${PLATFORM_JWT_SECRET:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
       OUTBOX_POLL_INTERVAL_SECONDS: ${OUTBOX_POLL_INTERVAL_SECONDS:-1}
       MCP_STDIO_ALLOWED: ${MCP_STDIO_ALLOWED:-false}
@@ -185,7 +185,7 @@ services:
       API_UPSTREAM: api:8080
       NGINX_ENVSUBST_FILTER: API_UPSTREAM
     ports:
-      - "${UI_HOST_PORT:-3000}:3000"
+      - "${UI_HOST_PORT:-3001}:3000"
     depends_on:
       api:
         condition: service_healthy
