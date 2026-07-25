@@ -15,6 +15,17 @@ spec:
       labels:
         app: openswe-webhook
     spec:
+      initContainers:
+        - name: migrate
+          image: openswe-platform:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "openswe_platform.migrate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_URL
       containers:
         - name: webhook
           image: openswe-platform:latest
@@ -26,12 +37,21 @@ spec:
           envFrom:
             - configMapRef:
                 name: openswe-config
-            - secretRef:
-                name: openswe-secrets
-                optional: true
           env:
             - name: SERVICE_NAME
               value: webhook
+            - name: GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: GITHUB_WEBHOOK_SECRET
+                  optional: true
+            - name: SLACK_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: SLACK_SIGNING_SECRET
+                  optional: true
           readinessProbe:
             httpGet:
               path: /readyz

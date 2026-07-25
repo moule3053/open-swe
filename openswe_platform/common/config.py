@@ -91,6 +91,15 @@ class Settings:
         default_factory=lambda: float(_env("OUTBOX_POLL_INTERVAL_SECONDS", "1") or "1")
     )
     api_auth_disabled: bool = field(default_factory=lambda: _env_bool("API_AUTH_DISABLED", True))
+    platform_api_token: str | None = field(default_factory=lambda: _env("PLATFORM_API_TOKEN"))
+    platform_jwt_secret: str | None = field(default_factory=lambda: _env("PLATFORM_JWT_SECRET"))
+    cors_origins: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            origin.strip()
+            for origin in (_env("CORS_ORIGINS", "http://localhost:3000") or "").split(",")
+            if origin.strip()
+        )
+    )
     default_org_id: str = field(
         default_factory=lambda: (
             _env("DEFAULT_ORG_ID", "00000000-0000-4000-8000-000000000001")
@@ -105,6 +114,9 @@ class Settings:
     )
     github_webhook_secret: str | None = field(default_factory=lambda: _env("GITHUB_WEBHOOK_SECRET"))
     slack_signing_secret: str | None = field(default_factory=lambda: _env("SLACK_SIGNING_SECRET"))
+    webhook_signatures_required: bool = field(
+        default_factory=lambda: _env_bool("WEBHOOK_SIGNATURES_REQUIRED", False)
+    )
     service_name: str = field(
         default_factory=lambda: _env("SERVICE_NAME", "platform") or "platform"
     )
@@ -114,12 +126,21 @@ class Settings:
         )
     )
     daytona_api_key: str | None = field(default_factory=lambda: _env("DAYTONA_API_KEY"))
+    allow_stub_sandboxes: bool = field(
+        default_factory=lambda: _env_bool("ALLOW_STUB_SANDBOXES", False)
+    )
     agent_sandbox_kubeconfig: str | None = field(
         default_factory=lambda: _env("AGENT_SANDBOX_KUBECONFIG")
     )
     opensandbox_base_url: str | None = field(default_factory=lambda: _env("OPENSANDBOX_BASE_URL"))
     opensandbox_api_key: str | None = field(default_factory=lambda: _env("OPENSANDBOX_API_KEY"))
     mcp_stdio_allowed: bool = field(default_factory=lambda: _env_bool("MCP_STDIO_ALLOWED", False))
+    mcp_allow_private_networks: bool = field(
+        default_factory=lambda: _env_bool("MCP_ALLOW_PRIVATE_NETWORKS", False)
+    )
+    mcp_tool_timeout_seconds: int = field(
+        default_factory=lambda: _env_int("MCP_TOOL_TIMEOUT_SECONDS", 120)
+    )
     max_mcp_servers_per_run: int = field(
         default_factory=lambda: _env_int("MAX_MCP_SERVERS_PER_RUN", 10)
     )

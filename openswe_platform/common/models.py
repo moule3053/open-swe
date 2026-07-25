@@ -45,6 +45,14 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class OrgMembership(Base):
+    __tablename__ = "org_memberships"
+
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    role: Mapped[str] = mapped_column(Text, default="member")
+
+
 class OrgSettings(Base):
     __tablename__ = "org_settings"
     org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)

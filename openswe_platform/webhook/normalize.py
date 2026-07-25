@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import re
+import time
 from typing import Any
 
 from openswe_platform.common.enums import AgentType, IngressCommand, TaskSource
@@ -28,6 +29,11 @@ def verify_slack_signature(
     if not secret:
         return True
     if not timestamp or not signature:
+        return False
+    try:
+        if abs(time.time() - int(timestamp)) > 300:
+            return False
+    except ValueError:
         return False
     basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
     digest = hmac.new(secret.encode(), basestring.encode(), hashlib.sha256).hexdigest()

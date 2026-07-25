@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
+
+from openswe_platform.common.config import get_settings
+from openswe_platform.common.crypto import try_decrypt
+from openswe_platform.common.network_security import validate_remote_url
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +22,8 @@ class McpTool:
     server_name: str
     tool_name: str
     description: str = ""
-    # callable placeholder for agent binding
     handler: Callable[..., Awaitable[str]] | None = None
+    langchain_tool: Any = None
 
     @property
     def namespaced(self) -> str:
@@ -57,20 +62,31 @@ async def connect_mcp_servers(snapshot: list[dict[str, Any]]) -> list[McpSession
         name = str(cfg.get("name") or "mcp")
         required = bool(cfg.get("required"))
         try:
-            tools = await _probe_tools(cfg)
+            tools = await _load_tools(cfg)
             allow = list(cfg.get("tool_allowlist") or [])
             deny = list(cfg.get("tool_denylist") or [])
-            filtered = filter_tools(tools, allowlist=allow, denylist=deny)
-            mcp_tools = [
-                McpTool(
+            filtered_names = filter_tools(
+                [str(getattr(tool, "name", "")) for tool in tools],
+                allowlist=allow,
+                denylist=deny,
+            )
+            mcp_tools = []
+            for tool in tools:
+                if str(getattr(tool, "name", "")) not in filtered_names:
+                    continue
+                item = McpTool(
                     server_id=server_id,
                     server_name=name,
-                    tool_name=t,
-                    description=f"MCP tool {t} from {name}",
-                    handler=_make_handler(cfg, t),
+                    tool_name=str(tool.name),
+                    description=str(getattr(tool, "description", "") or ""),
+                    handler=_make_handler(tool),
                 )
-                for t in filtered
-            ]
+                item.langchain_tool = (
+                    tool.model_copy(update={"name": item.namespaced})
+                    if hasattr(tool, "model_copy")
+                    else tool
+                )
+                mcp_tools.append(item)
             sessions.append(McpSession(server_id=server_id, name=name, ok=True, tools=mcp_tools))
         except Exception as exc:
             logger.exception("MCP connect failed for %s", name)
@@ -87,63 +103,68 @@ async def connect_mcp_servers(snapshot: list[dict[str, Any]]) -> list[McpSession
     return sessions
 
 
-async def _probe_tools(cfg: dict[str, Any]) -> list[str]:
-    """Best-effort tool discovery. Uses langchain-mcp-adapters when available."""
+async def _load_tools(cfg: dict[str, Any]) -> list[Any]:
+    """Connect to one MCP server and return callable LangChain tools."""
+    from langchain_mcp_adapters.client import MultiServerMCPClient
+    from langchain_mcp_adapters.sessions import (
+        SSEConnection,
+        StdioConnection,
+        StreamableHttpConnection,
+    )
+
     transport = cfg.get("transport")
     url = cfg.get("url")
+    server_key = str(cfg.get("name") or "server")
     if transport in {"sse", "streamable_http"} and url:
-        try:
-            from langchain_mcp_adapters.client import MultiServerMCPClient
-            from langchain_mcp_adapters.sessions import SSEConnection, StreamableHttpConnection
-
-            headers = {}
-            if cfg.get("headers_json"):
-                headers = json.loads(cfg["headers_json"])
-            if cfg.get("auth"):
-                headers.setdefault("Authorization", f"Bearer {cfg['auth']}")
-
-            server_key = str(cfg.get("name") or "server")
-            if transport == "sse":
-                connection = SSEConnection(
-                    url=str(url),
-                    transport="sse",
-                    headers=headers,
-                )
-            else:
-                connection = StreamableHttpConnection(
-                    url=str(url),
-                    transport="streamable_http",
-                    headers=headers,
-                )
-            client = MultiServerMCPClient({server_key: connection})
+        await validate_remote_url(
+            str(url),
+            allow_private=get_settings().mcp_allow_private_networks,
+        )
+        headers_json = try_decrypt(cfg.get("headers_ciphertext"))
+        headers = json.loads(headers_json) if headers_json else {}
+        auth = try_decrypt(cfg.get("auth_ciphertext"))
+        if auth:
+            headers.setdefault("Authorization", f"Bearer {auth}")
+        if transport == "sse":
+            connection = SSEConnection(
+                url=str(url),
+                transport="sse",
+                headers=headers,
+            )
+        else:
+            connection = StreamableHttpConnection(
+                url=str(url),
+                transport="streamable_http",
+                headers=headers,
+            )
+        client = MultiServerMCPClient({server_key: connection})
+        async with asyncio.timeout(30):
             tools = await client.get_tools()
-            return [getattr(t, "name", str(t)) for t in tools]
-        except Exception as exc:
-            logger.warning("langchain MCP probe failed: %s", exc)
-            # treat remote as reachable with unknown tools — empty list still ok
-            return []
+        return list(tools)
     if transport == "stdio":
-        # stdio servers discovered at connect time; empty until process start
-        return []
-    return []
+        if not get_settings().mcp_stdio_allowed:
+            raise RuntimeError("stdio MCP transport is disabled")
+        command = str(cfg.get("command") or "")
+        if not command:
+            raise RuntimeError("stdio MCP command is missing")
+        connection = StdioConnection(
+            transport="stdio",
+            command=command,
+            args=[str(arg) for arg in (cfg.get("args") or [])],
+        )
+        client = MultiServerMCPClient({server_key: connection})
+        async with asyncio.timeout(30):
+            tools = await client.get_tools()
+        return list(tools)
+    raise RuntimeError(f"unsupported MCP transport: {transport}")
 
 
-def _make_handler(cfg: dict[str, Any], tool_name: str) -> Callable[..., Awaitable[str]]:
+def _make_handler(tool: Any) -> Callable[..., Awaitable[str]]:
     async def _handler(**kwargs: Any) -> str:
-        logger.info(
-            "MCP tool call server=%s tool=%s kwargs_keys=%s",
-            cfg.get("name"),
-            tool_name,
-            list(kwargs.keys()),
-        )
-        return json.dumps(
-            {
-                "ok": True,
-                "server": cfg.get("name"),
-                "tool": tool_name,
-                "note": "MCP invocation stub — wire MultiServerMCPClient.call for production",
-                "args": kwargs,
-            }
-        )
+        async with asyncio.timeout(get_settings().mcp_tool_timeout_seconds):
+            result = await tool.ainvoke(kwargs)
+        if isinstance(result, str):
+            return result
+        return json.dumps(result, default=str)
 
     return _handler

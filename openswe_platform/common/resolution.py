@@ -136,7 +136,7 @@ def resolve_mcp_ids(
 
 
 def mcp_public_snapshot(server: Any, *, include_secrets: bool = False) -> dict[str, Any]:
-    """Build harness-facing snapshot; secrets only when include_secrets=True."""
+    """Build the immutable task snapshot without materializing plaintext secrets."""
     snap: dict[str, Any] = {
         "mcp_server_id": str(server.mcp_server_id),
         "name": server.name,
@@ -152,8 +152,6 @@ def mcp_public_snapshot(server: Any, *, include_secrets: bool = False) -> dict[s
         "has_auth": bool(server.auth_ciphertext or server.headers_ciphertext),
     }
     if include_secrets:
-        from openswe_platform.common.crypto import try_decrypt
-
-        snap["auth"] = try_decrypt(server.auth_ciphertext)
-        snap["headers_json"] = try_decrypt(server.headers_ciphertext)
+        snap["auth_ciphertext"] = server.auth_ciphertext
+        snap["headers_ciphertext"] = server.headers_ciphertext
     return snap

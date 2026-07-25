@@ -15,7 +15,7 @@ from openswe_platform.common.config import get_settings
 from openswe_platform.common.db import dispose_engine, get_session_factory
 from openswe_platform.common.enums import ParkReason
 from openswe_platform.common.messaging import SUBJECT_ENQUEUE_PREFIX, NatsBus
-from openswe_platform.common.models import Message, SandboxRow, Task
+from openswe_platform.common.models import Message, ProcessedMessage, SandboxRow, Task
 from openswe_platform.common.tasks import (
     append_event,
     claim_task,
@@ -106,8 +106,15 @@ class HarnessWorker:
             for msg in msgs:
                 try:
                     body = json.loads(msg.data.decode())
-                    await self._handle_enqueue(body)
+                    claimed = await self._claim_enqueue(body)
                     await msg.ack()
+                    if claimed is not None:
+                        task_id, run_id = claimed
+                        self._busy = True
+                        try:
+                            await self._execute_run(task_id, run_id)
+                        finally:
+                            self._busy = False
                 except Exception:
                     logger.exception("Failed handling message")
                     try:
@@ -115,32 +122,32 @@ class HarnessWorker:
                     except Exception:
                         pass
 
-    async def _handle_enqueue(self, body: dict[str, Any]) -> None:
+    async def _claim_enqueue(self, body: dict[str, Any]) -> tuple[uuid.UUID, uuid.UUID] | None:
         payload = body.get("payload") or body
         task_id_raw = payload.get("task_id") or body.get("task_id")
         if not task_id_raw:
-            return
+            return None
         task_id = uuid.UUID(str(task_id_raw))
+        msg_id = str(body.get("msg_id") or "")
 
         factory = get_session_factory()
         async with factory() as session:
+            if msg_id and await session.get(ProcessedMessage, msg_id):
+                return None
             claimed = await claim_task(
                 session,
                 task_id=task_id,
                 worker_id=self.worker_id,
                 lease_ttl_seconds=self.settings.lease_ttl_seconds,
             )
+            if msg_id:
+                session.add(ProcessedMessage(msg_id=msg_id))
             await session.commit()
             if claimed is None:
                 logger.info("Task %s not claimable; acking", task_id)
-                return
-            task, run = claimed
-
-        self._busy = True
-        try:
-            await self._execute_run(task_id, run.run_id)
-        finally:
-            self._busy = False
+                return None
+            _, run = claimed
+            return task_id, run.run_id
 
     async def _execute_run(self, task_id: uuid.UUID, run_id: uuid.UUID) -> None:
         factory = get_session_factory()
@@ -148,11 +155,18 @@ class HarnessWorker:
             task = await session.get(Task, task_id)
             if task is None:
                 return
-            cp = await load_latest_checkpoint(session, run_id=run_id)
+            cp = await load_latest_checkpoint(session, task_id=task_id)
+            checkpoint_last_seq = int((cp.blob if cp else {}).get("last_message_seq", 0))
             msg_result = await session.execute(
-                select(Message).where(Message.task_id == task_id).order_by(Message.seq)
+                select(Message)
+                .where(Message.task_id == task_id, Message.seq > checkpoint_last_seq)
+                .order_by(Message.seq)
             )
-            messages = [{"role": m.role, "content": m.content} for m in msg_result.scalars().all()]
+            message_rows = list(msg_result.scalars().all())
+            messages = [{"role": m.role, "content": m.content} for m in message_rows]
+            last_message_seq = max(
+                [checkpoint_last_seq, *(int(m.seq) for m in message_rows)],
+            )
             # existing sandbox?
             sb_result = await session.execute(
                 select(SandboxRow)
@@ -180,21 +194,45 @@ class HarnessWorker:
                 "sandbox_id": existing_sb.sandbox_id if existing_sb else None,
                 "mcp_snapshot": list(task.mcp_snapshot or []),
                 "checkpoint": cp.blob if cp else None,
+                "last_message_seq": last_message_seq,
                 "cancel_requested": bool(task.cancel_requested_at),
             }
             await session.commit()
 
         provider = get_sandbox_provider(task_snapshot["sandbox_provider"])
-        if task_snapshot["sandbox_id"]:
-            try:
-                sandbox_ref = await provider.connect(task_snapshot["sandbox_id"])
-                event_type = "sandbox_reused"
-            except Exception:
+        try:
+            if task_snapshot["sandbox_id"]:
+                try:
+                    sandbox_ref = await provider.connect(task_snapshot["sandbox_id"])
+                    event_type = "sandbox_reused"
+                except Exception:
+                    logger.warning(
+                        "Sandbox reconnect failed; creating a replacement", exc_info=True
+                    )
+                    sandbox_ref = await provider.create(task_id=str(task_id))
+                    event_type = "sandbox_created"
+            else:
                 sandbox_ref = await provider.create(task_id=str(task_id))
                 event_type = "sandbox_created"
-        else:
-            sandbox_ref = await provider.create(task_id=str(task_id))
-            event_type = "sandbox_created"
+        except Exception as exc:
+            async with factory() as session:
+                await append_event(
+                    session,
+                    task_id=task_id,
+                    run_id=run_id,
+                    event_type="sandbox_error",
+                    payload={"provider": task_snapshot["sandbox_provider"], "error": str(exc)},
+                )
+                await complete_task(
+                    session,
+                    task_id=task_id,
+                    run_id=run_id,
+                    success=False,
+                    error_code="sandbox_unavailable",
+                    error_message=str(exc),
+                )
+                await session.commit()
+            return
 
         async with factory() as session:
             await upsert_sandbox(
@@ -285,6 +323,7 @@ class HarnessWorker:
             sandbox_id=sandbox_ref.sandbox_id,
             mcp_snapshot=task_snapshot["mcp_snapshot"],
             checkpoint=task_snapshot["checkpoint"],
+            last_message_seq=task_snapshot["last_message_seq"],
             cancel_requested=task_snapshot["cancel_requested"],
         )
 
@@ -304,24 +343,13 @@ class HarnessWorker:
             return
 
         async def on_step(event_type: str, payload: dict[str, Any]) -> None:
-            # Heartbeat + optional checkpoint persistence
             async with factory() as session:
-                # refresh cancel flag
-                t = await session.get(Task, task_id)
-                if t and t.cancel_requested_at:
-                    ctx.cancel_requested = True
-                await heartbeat_lease(
-                    session,
-                    run_id=run_id,
-                    worker_id=self.worker_id,
-                    lease_ttl_seconds=self.settings.lease_ttl_seconds,
-                )
                 if event_type == "checkpoint":
                     await save_checkpoint(
                         session,
                         task_id=task_id,
                         run_id=run_id,
-                        blob=payload,
+                        blob={**payload, "last_message_seq": ctx.last_message_seq},
                     )
                 else:
                     await append_event(
@@ -333,15 +361,69 @@ class HarnessWorker:
                     )
                 await session.commit()
 
+        async def on_boundary() -> list[dict[str, str]]:
+            async with factory() as session:
+                task_row = await session.get(Task, task_id)
+                if task_row and task_row.cancel_requested_at:
+                    ctx.cancel_requested = True
+                lease_ok = await heartbeat_lease(
+                    session,
+                    run_id=run_id,
+                    worker_id=self.worker_id,
+                    lease_ttl_seconds=self.settings.lease_ttl_seconds,
+                )
+                if not lease_ok:
+                    raise RuntimeError("Worker lease was lost")
+                pending = await session.execute(
+                    select(Message)
+                    .where(Message.task_id == task_id, Message.seq > ctx.last_message_seq)
+                    .order_by(Message.seq)
+                )
+                rows = list(pending.scalars().all())
+                if rows:
+                    ctx.last_message_seq = max(int(row.seq) for row in rows)
+                await session.commit()
+                return [{"role": row.role, "content": row.content} for row in rows]
+
+        heartbeat_stop = asyncio.Event()
+
+        async def heartbeat_loop() -> None:
+            while not heartbeat_stop.is_set():
+                try:
+                    await asyncio.wait_for(
+                        heartbeat_stop.wait(),
+                        timeout=self.settings.heartbeat_interval_seconds,
+                    )
+                    return
+                except TimeoutError:
+                    pass
+                async with factory() as session:
+                    task_row = await session.get(Task, task_id)
+                    if task_row and task_row.cancel_requested_at:
+                        ctx.cancel_requested = True
+                    ok = await heartbeat_lease(
+                        session,
+                        run_id=run_id,
+                        worker_id=self.worker_id,
+                        lease_ttl_seconds=self.settings.lease_ttl_seconds,
+                    )
+                    await session.commit()
+                    if not ok:
+                        ctx.cancel_requested = True
+                        return
+
+        heartbeat_task = asyncio.create_task(heartbeat_loop())
         try:
-            result = await agent.run(
-                ctx,
-                llm=self.llm,
-                sandbox=provider,
-                sandbox_ref=sandbox_ref,
-                mcp_sessions=mcp_sessions,
-                on_step=on_step,
-            )
+            async with asyncio.timeout(self.settings.max_run_duration_seconds):
+                result = await agent.run(
+                    ctx,
+                    llm=self.llm,
+                    sandbox=provider,
+                    sandbox_ref=sandbox_ref,
+                    mcp_sessions=mcp_sessions,
+                    on_step=on_step,
+                    on_boundary=on_boundary,
+                )
         except Exception as exc:
             logger.exception("Agent run failed")
             async with factory() as session:
@@ -349,7 +431,7 @@ class HarnessWorker:
                     session,
                     task_id=task_id,
                     run_id=run_id,
-                    blob={"error": str(exc)},
+                    blob={"error": str(exc), "last_message_seq": ctx.last_message_seq},
                     metadata={"fatal": True},
                 )
                 await complete_task(
@@ -362,6 +444,13 @@ class HarnessWorker:
                 )
                 await session.commit()
             return
+        finally:
+            heartbeat_stop.set()
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
 
         async with factory() as session:
             if result.checkpoint_blob:
@@ -369,7 +458,7 @@ class HarnessWorker:
                     session,
                     task_id=task_id,
                     run_id=run_id,
-                    blob=result.checkpoint_blob,
+                    blob={**result.checkpoint_blob, "last_message_seq": ctx.last_message_seq},
                 )
             if result.park:
                 await park_task(
@@ -388,14 +477,6 @@ class HarnessWorker:
                     error_code=result.error_code,
                     error_message=None if result.success else result.final_message,
                 )
-                if result.success:
-                    await append_event(
-                        session,
-                        task_id=task_id,
-                        run_id=run_id,
-                        event_type="run_succeeded",
-                        payload={"summary": result.final_message},
-                    )
             await session.commit()
 
 

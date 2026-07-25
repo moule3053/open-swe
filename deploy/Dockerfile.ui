@@ -1,0 +1,19 @@
+FROM node:22-alpine AS build
+
+WORKDIR /app
+RUN corepack enable
+COPY ui/package.json ui/pnpm-lock.yaml ui/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY ui/ ./
+ENV VITE_DEVTOOLS=false
+ENV VITE_PLATFORM_API_BASE_URL=""
+RUN pnpm run build
+
+FROM nginx:1.27-alpine
+COPY deploy/nginx.ui.conf /etc/nginx/templates/default.conf.template
+COPY --from=build /app/.output/public /usr/share/nginx/html
+ENV API_UPSTREAM=api:8080
+ENV NGINX_ENVSUBST_FILTER=API_UPSTREAM
+EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=5 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1

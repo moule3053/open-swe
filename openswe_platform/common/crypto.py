@@ -48,11 +48,7 @@ def decrypt_secret(value: str) -> str:
 def try_encrypt(value: str | None) -> str | None:
     if value is None:
         return None
-    try:
-        return encrypt_secret(value)
-    except EncryptionKeyMissingError:
-        # Dev mode: store plaintext marker so local runs work without keys.
-        return f"plaintext:{value}"
+    return encrypt_secret(value)
 
 
 def try_decrypt(value: str | None) -> str | None:

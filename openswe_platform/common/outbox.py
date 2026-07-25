@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -123,6 +124,7 @@ async def outbox_publisher_loop(
     *,
     interval: float = 1.0,
     stop_event: asyncio.Event | None = None,
+    raise_on_error: bool = False,
 ) -> None:
     stop = stop_event or asyncio.Event()
     while not stop.is_set():
@@ -134,7 +136,50 @@ async def outbox_publisher_loop(
                     logger.info("Published %s outbox messages", n)
         except Exception:
             logger.exception("Outbox publish failed")
+            if raise_on_error:
+                raise
         try:
             await asyncio.wait_for(stop.wait(), timeout=interval)
         except TimeoutError:
             continue
+
+
+async def outbox_supervisor_loop(
+    session_factory: Any,
+    *,
+    nats_url: str,
+    interval: float = 1.0,
+    stop_event: asyncio.Event | None = None,
+    on_connection: Callable[[NatsBus | None], None] | None = None,
+) -> None:
+    """Reconnect the outbox publisher after initial or runtime NATS failures."""
+    stop = stop_event or asyncio.Event()
+    while not stop.is_set():
+        bus = NatsBus(nats_url)
+        try:
+            await bus.connect()
+            if on_connection:
+                on_connection(bus)
+            await outbox_publisher_loop(
+                session_factory,
+                bus,
+                interval=interval,
+                stop_event=stop,
+                raise_on_error=True,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Outbox publisher disconnected; retrying")
+        finally:
+            if on_connection:
+                on_connection(None)
+            try:
+                await bus.close()
+            except Exception:
+                logger.debug("Failed closing NATS connection", exc_info=True)
+        if not stop.is_set():
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=max(interval, 1.0))
+            except TimeoutError:
+                pass

@@ -130,4 +130,4 @@ class NatsBus:
 
     @property
     def connected(self) -> bool:
-        return self._nc is not None
+        return bool(self._nc is not None and getattr(self._nc, "is_connected", False))

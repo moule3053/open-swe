@@ -12,13 +12,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from openswe_platform.api.deps import AuthContext, get_auth, get_db
+from openswe_platform.api.deps import AuthContext, get_auth, get_db, require_admin
 from openswe_platform.common.config import get_settings
-from openswe_platform.common.crypto import try_encrypt
+from openswe_platform.common.crypto import EncryptionKeyMissingError, try_encrypt
 from openswe_platform.common.enums import McpExecution, McpScope, McpTransport
 from openswe_platform.common.errors import ForbiddenError, NotFoundError, PlatformError
 from openswe_platform.common.models import McpServer
+from openswe_platform.common.network_security import validate_remote_url
+from openswe_platform.common.resolution import mcp_public_snapshot
 from openswe_platform.common.serializers import mcp_to_dict
+from openswe_platform.harness.mcp_runtime import connect_mcp_servers
 
 router = APIRouter(prefix="/v1/mcp-servers", tags=["mcp"])
 
@@ -59,13 +62,29 @@ def _auth_cipher(auth: dict[str, Any] | None) -> str | None:
     if not auth:
         return None
     token = auth.get("token") or auth.get("bearer") or json.dumps(auth)
-    return try_encrypt(str(token))
+    try:
+        return try_encrypt(str(token))
+    except EncryptionKeyMissingError as exc:
+        raise PlatformError(
+            "Secret encryption unavailable",
+            status=503,
+            detail="TOKEN_ENCRYPTION_KEY is required before storing MCP credentials",
+            error_code="encryption_not_configured",
+        ) from exc
 
 
 def _headers_cipher(headers: dict[str, str] | None) -> str | None:
     if not headers:
         return None
-    return try_encrypt(json.dumps(headers))
+    try:
+        return try_encrypt(json.dumps(headers))
+    except EncryptionKeyMissingError as exc:
+        raise PlatformError(
+            "Secret encryption unavailable",
+            status=503,
+            detail="TOKEN_ENCRYPTION_KEY is required before storing MCP headers",
+            error_code="encryption_not_configured",
+        ) from exc
 
 
 @router.get("")
@@ -115,6 +134,20 @@ async def create_mcp(
             error_code="url_required",
             detail="url is required for remote transports",
         )
+    if body.url:
+        try:
+            await validate_remote_url(
+                body.url,
+                allow_private=settings.mcp_allow_private_networks,
+                resolve=False,
+            )
+        except ValueError as exc:
+            raise PlatformError(
+                "MCP URL blocked",
+                status=400,
+                detail=str(exc),
+                error_code="mcp_url_blocked",
+            ) from exc
     if transport == McpTransport.STDIO and not body.command:
         raise PlatformError(
             "command required",
@@ -123,7 +156,18 @@ async def create_mcp(
             detail="command is required for stdio transport",
         )
 
-    scope = McpScope(body.scope)
+    try:
+        scope = McpScope(body.scope)
+        execution = McpExecution(body.execution)
+    except ValueError as exc:
+        raise PlatformError(
+            "Invalid MCP configuration",
+            status=400,
+            detail=str(exc),
+            error_code="invalid_mcp_configuration",
+        ) from exc
+    if scope == McpScope.ORG:
+        require_admin(auth)
     server = McpServer(
         scope=scope.value,
         org_id=auth.org_id if scope == McpScope.ORG else None,
@@ -139,7 +183,7 @@ async def create_mcp(
         tool_allowlist=body.tool_allowlist,
         tool_denylist=body.tool_denylist,
         agent_types=body.agent_types,
-        execution=McpExecution(body.execution).value,
+        execution=execution.value,
         required=body.required if scope == McpScope.ORG else False,
         created_by=auth.user_id,
     )
@@ -167,6 +211,30 @@ async def patch_mcp(
 ) -> dict[str, Any]:
     server = await _visible_server(db, mcp_server_id, auth, require_owner=True)
     data = body.model_dump(exclude_unset=True)
+    if "url" in data and data["url"]:
+        try:
+            await validate_remote_url(
+                str(data["url"]),
+                allow_private=get_settings().mcp_allow_private_networks,
+                resolve=False,
+            )
+        except ValueError as exc:
+            raise PlatformError(
+                "MCP URL blocked",
+                status=400,
+                detail=str(exc),
+                error_code="mcp_url_blocked",
+            ) from exc
+    if "execution" in data and data["execution"] is not None:
+        try:
+            data["execution"] = McpExecution(data["execution"]).value
+        except ValueError as exc:
+            raise PlatformError(
+                "Invalid MCP execution mode",
+                status=400,
+                detail=str(exc),
+                error_code="invalid_mcp_execution",
+            ) from exc
     if "auth" in data:
         server.auth_ciphertext = _auth_cipher(data.pop("auth"))
     if "headers" in data:
@@ -197,31 +265,22 @@ async def test_mcp(
     auth: AuthContext = Depends(get_auth),
 ) -> dict[str, Any]:
     server = await _visible_server(db, mcp_server_id, auth)
-    # Lightweight connectivity probe: remote URL head/get or stdio dry-run stub.
     tools: list[str] = []
     ok = True
     detail = "ok"
     try:
-        if server.transport in {"sse", "streamable_http"} and server.url:
-            import httpx
-
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(server.url)
-                # MCP SSE endpoints may not support GET; any response means reachable
-                ok = resp.status_code < 500
-                detail = f"http {resp.status_code}"
-                tools = list(server.last_tools or [])
-        else:
-            detail = "stdio probe skipped (configure and run harness for full test)"
-            tools = []
+        sessions = await connect_mcp_servers([mcp_public_snapshot(server, include_secrets=True)])
+        session = sessions[0]
+        ok = session.ok
+        detail = session.error or "connected"
+        tools = [tool.tool_name for tool in session.tools]
     except Exception as exc:
         ok = False
         detail = str(exc)
 
     server.last_test_at = datetime.now(UTC)
     server.last_test_ok = ok
-    if tools:
-        server.last_tools = tools
+    server.last_tools = tools
     await db.flush()
     return {"ok": ok, "tools": tools, "detail": detail}
 
@@ -244,5 +303,6 @@ async def _visible_server(
     if require_owner:
         if server.scope == "user" and server.user_id != auth.user_id:
             raise ForbiddenError()
-        # org servers: any org member can edit in v1 when using default admin path
+        if server.scope == "org":
+            require_admin(auth)
     return server

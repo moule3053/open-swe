@@ -1,4 +1,7 @@
-from openswe_platform.harness.mcp_runtime import filter_tools
+import pytest
+
+from openswe_platform.harness import mcp_runtime
+from openswe_platform.harness.mcp_runtime import connect_mcp_servers, filter_tools
 
 
 def test_allowlist():
@@ -11,3 +14,28 @@ def test_denylist():
 
 def test_both():
     assert filter_tools(["a", "b", "c"], allowlist=["a", "b"], denylist=["b"]) == ["a"]
+
+
+@pytest.mark.asyncio
+async def test_connected_tool_invokes_underlying_langchain_tool(monkeypatch):
+    calls = []
+
+    class FakeTool:
+        name = "search"
+        description = "Search internal docs"
+
+        async def ainvoke(self, args):
+            calls.append(args)
+            return {"answer": "found"}
+
+    async def load_tools(_config):
+        return [FakeTool()]
+
+    monkeypatch.setattr(mcp_runtime, "_load_tools", load_tools)
+    sessions = await connect_mcp_servers(
+        [{"mcp_server_id": "server-1", "name": "docs", "transport": "sse"}]
+    )
+    assert sessions[0].ok
+    assert sessions[0].tools[0].namespaced == "mcp_docs_search"
+    assert await sessions[0].tools[0].handler(query="leases") == '{"answer": "found"}'
+    assert calls == [{"query": "leases"}]

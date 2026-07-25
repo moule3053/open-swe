@@ -1,11 +1,13 @@
 import hashlib
 import hmac
+import time
 
 from openswe_platform.common.enums import IngressCommand
 from openswe_platform.webhook.normalize import (
     normalize_github,
     normalize_slack,
     verify_github_signature,
+    verify_slack_signature,
 )
 
 
@@ -62,3 +64,29 @@ def test_slack_mention():
     assert cmd["command"] == IngressCommand.UPSERT_AND_ENQUEUE.value
     assert cmd["repo"] == "acme/pay"
     assert cmd["thread_id"] == "slack:C1:1.2"
+
+
+def test_slack_signature_rejects_replay():
+    secret = "secret"
+    body = b'{"event_id":"E1"}'
+    timestamp = str(int(time.time()) - 301)
+    signature = (
+        "v0="
+        + hmac.new(
+            secret.encode(), f"v0:{timestamp}:{body.decode()}".encode(), hashlib.sha256
+        ).hexdigest()
+    )
+    assert not verify_slack_signature(secret, body, timestamp, signature)
+
+
+def test_slack_signature_accepts_current_request():
+    secret = "secret"
+    body = b'{"event_id":"E1"}'
+    timestamp = str(int(time.time()))
+    signature = (
+        "v0="
+        + hmac.new(
+            secret.encode(), f"v0:{timestamp}:{body.decode()}".encode(), hashlib.sha256
+        ).hexdigest()
+    )
+    assert verify_slack_signature(secret, body, timestamp, signature)

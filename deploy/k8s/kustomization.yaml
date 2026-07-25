@@ -4,7 +4,9 @@ namespace: openswe
 resources:
   - namespace.yaml
   - configmap.yaml
+  - migration-job.yaml
   - api-deployment.yaml
   - webhook-deployment.yaml
   - harness-deployment.yaml
   - harness-keda.yaml
+  - ui-deployment.yaml

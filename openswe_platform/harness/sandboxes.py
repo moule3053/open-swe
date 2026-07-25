@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
@@ -58,14 +59,15 @@ class DaytonaProvider(SandboxProviderBase):
     async def create(self, *, task_id: str, metadata: dict[str, Any] | None = None) -> SandboxRef:
         settings = get_settings()
         if not settings.daytona_api_key:
-            # Local/dev stub sandbox
+            if not settings.allow_stub_sandboxes:
+                raise RuntimeError("DAYTONA_API_KEY is required for the Daytona provider")
             sid = f"daytona-stub-{task_id[:8]}-{uuid.uuid4().hex[:8]}"
-            logger.warning("DAYTONA_API_KEY unset; using stub sandbox %s", sid)
+            logger.warning("Explicit local stub sandbox enabled: %s", sid)
             return SandboxRef(provider=self.name, sandbox_id=sid, metadata={"stub": True})
         try:
             from agent.integrations.daytona import create_daytona_sandbox
 
-            backend = create_daytona_sandbox(None)
+            backend = await asyncio.to_thread(create_daytona_sandbox, None)
             sid = (
                 getattr(backend, "id", None)
                 or getattr(backend, "sandbox_id", None)
@@ -78,9 +80,14 @@ class DaytonaProvider(SandboxProviderBase):
                 handle=backend,
             )
         except Exception:
-            logger.exception("Daytona create failed; falling back to stub")
-            sid = f"daytona-stub-{uuid.uuid4().hex[:12]}"
-            return SandboxRef(provider=self.name, sandbox_id=sid, metadata={"stub": True})
+            if not settings.allow_stub_sandboxes:
+                raise
+            logger.exception("Daytona create failed; explicit stub fallback enabled")
+            return SandboxRef(
+                provider=self.name,
+                sandbox_id=f"daytona-stub-{uuid.uuid4().hex[:12]}",
+                metadata={"stub": True},
+            )
 
     async def connect(self, sandbox_id: str) -> SandboxRef:
         settings = get_settings()
@@ -89,7 +96,7 @@ class DaytonaProvider(SandboxProviderBase):
         try:
             from agent.integrations.daytona import create_daytona_sandbox
 
-            backend = create_daytona_sandbox(sandbox_id)
+            backend = await asyncio.to_thread(create_daytona_sandbox, sandbox_id)
             return SandboxRef(provider=self.name, sandbox_id=sandbox_id, handle=backend)
         except Exception:
             logger.exception("Daytona connect failed")
@@ -101,10 +108,10 @@ class DaytonaProvider(SandboxProviderBase):
         # DaytonaSandbox typically exposes execute / run
         handle = ref.handle
         if hasattr(handle, "execute"):
-            result = handle.execute(command)
+            result = await asyncio.to_thread(handle.execute, command, timeout=timeout)
             return ExecResult(
                 exit_code=getattr(result, "exit_code", 0) or 0,
-                stdout=str(getattr(result, "stdout", result) or ""),
+                stdout=str(getattr(result, "output", getattr(result, "stdout", result)) or ""),
                 stderr=str(getattr(result, "stderr", "") or ""),
             )
         return ExecResult(exit_code=0, stdout=str(handle))
@@ -122,7 +129,10 @@ class AgentSandboxProvider(SandboxProviderBase):
     name = SandboxProvider.AGENT_SANDBOX.value
 
     async def create(self, *, task_id: str, metadata: dict[str, Any] | None = None) -> SandboxRef:
-        # Real implementation would create a Sandbox CR via kubernetes API.
+        if not get_settings().allow_stub_sandboxes:
+            raise RuntimeError(
+                "agent_sandbox needs a cluster adapter; set ALLOW_STUB_SANDBOXES=true only for local UI testing"
+            )
         namespace = os.environ.get("AGENT_SANDBOX_NAMESPACE", "agent-sandboxes")
         sid = f"asb-{task_id[:8]}-{uuid.uuid4().hex[:8]}"
         logger.info("agent_sandbox create %s in ns %s", sid, namespace)
@@ -133,6 +143,8 @@ class AgentSandboxProvider(SandboxProviderBase):
         )
 
     async def connect(self, sandbox_id: str) -> SandboxRef:
+        if not get_settings().allow_stub_sandboxes:
+            raise RuntimeError("agent_sandbox reconnect is unavailable without a cluster adapter")
         namespace = os.environ.get("AGENT_SANDBOX_NAMESPACE", "agent-sandboxes")
         return SandboxRef(
             provider=self.name,
@@ -163,20 +175,18 @@ class OpenSandboxProvider(SandboxProviderBase):
         base = settings.opensandbox_base_url
         sid = f"osb-{task_id[:8]}-{uuid.uuid4().hex[:8]}"
         if not base:
-            logger.warning("OPENSANDBOX_BASE_URL unset; stub sandbox %s", sid)
+            if not settings.allow_stub_sandboxes:
+                raise RuntimeError("OPENSANDBOX_BASE_URL is required for the OpenSandbox provider")
+            logger.warning("Explicit local stub sandbox enabled: %s", sid)
             return SandboxRef(
                 provider=self.name, sandbox_id=sid, metadata={"stub": True, **(metadata or {})}
             )
-        # Placeholder for OpenSandbox SDK create call
-        logger.info("opensandbox create via %s -> %s", base, sid)
-        return SandboxRef(
-            provider=self.name,
-            sandbox_id=sid,
-            metadata={"base_url": base, "stub": True, **(metadata or {})},
-        )
+        raise RuntimeError("OpenSandbox API adapter is not configured for this deployment")
 
     async def connect(self, sandbox_id: str) -> SandboxRef:
         settings = get_settings()
+        if not settings.allow_stub_sandboxes:
+            raise RuntimeError("OpenSandbox reconnect is unavailable without an API adapter")
         return SandboxRef(
             provider=self.name,
             sandbox_id=sandbox_id,

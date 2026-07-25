@@ -25,9 +25,7 @@ platform-deps:
 	$(COMPOSE_CMD) up -d postgres nats
 
 platform-migrate:
-	@echo "Schema is applied via postgres init (migrations/001_init.sql)."
-	@echo "To re-apply manually:"
-	@echo "  psql postgresql://openswe:openswe@localhost:5432/openswe -f migrations/001_init.sql"
+	$(COMPOSE_CMD) run --rm migrate
 
 # Full stack in Docker (api + webhook + harness + postgres + nats). No KEDA.
 platform-build:
@@ -39,6 +37,7 @@ platform-up:
 	$(COMPOSE_CMD) up --build -d
 	@echo ""
 	@echo "API     http://localhost:$${API_HOST_PORT:-8080}"
+	@echo "UI      http://localhost:$${UI_HOST_PORT:-3000}/platform"
 	@echo "Webhook http://localhost:$${WEBHOOK_HOST_PORT:-8081}"
 	@echo "NATS    nats://localhost:$${NATS_HOST_PORT:-4222}  (monitor :$${NATS_MONITOR_HOST_PORT:-8222})"
 	@echo "Harness is a separate worker container consuming JetStream TASKS."
@@ -48,7 +47,7 @@ platform-down:
 	$(COMPOSE_CMD) down
 
 platform-logs:
-	$(COMPOSE_CMD) logs -f api webhook harness
+	$(COMPOSE_CMD) logs -f api webhook harness ui
 
 platform-ps:
 	$(COMPOSE_CMD) ps

@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: openswe-migrate
+  namespace: openswe
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: openswe-migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: openswe-platform:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "openswe_platform.migrate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_URL

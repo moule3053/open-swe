@@ -18,7 +18,6 @@ __pycache__
 **/.venv
 .DS_Store
 logs.txt
-ui
 tests
 evals
 .openwiki

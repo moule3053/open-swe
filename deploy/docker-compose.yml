@@ -1,23 +1,20 @@
-# Open SWE multi-service stack (local)
+# Open SWE multi-service stack for local development.
 #
-# Build & run everything:
-#   cp deploy/.env.example deploy/.env   # first time
-#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --build
+#   cp deploy/.env.example deploy/.env
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --build -d
 #
-# Scale harness workers (each pulls jobs from NATS independently; no KEDA):
-#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --scale harness=3
-#
-# Infra only (run API/webhook/harness on host via make):
-#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d postgres nats
-#
-# Services:
-#   postgres, nats          — dependencies
-#   litellm                 — model gateway (optional keys in .env)
-#   api                     — control plane :8080 (also publishes outbox → NATS)
-#   webhook                 — GitHub/Slack ingress :8081
-#   harness                 — job worker (NATS consumer; no public port)
+# UI: http://localhost:3000/platform
+# API: http://localhost:8080
 
 name: ${COMPOSE_PROJECT_NAME:-openswe}
+
+x-runtime: &runtime
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://openswe:openswe@postgres:5432/openswe}
+  NATS_URL: ${NATS_URL:-nats://nats:4222}
+  DEFAULT_MODEL: ${DEFAULT_MODEL:-openai:gpt-4o-mini}
+  DEFAULT_SANDBOX_PROVIDER: ${DEFAULT_SANDBOX_PROVIDER:-daytona}
+  DEFAULT_ORG_ID: ${DEFAULT_ORG_ID:-00000000-0000-4000-8000-000000000001}
+  DEFAULT_USER_ID: ${DEFAULT_USER_ID:-00000000-0000-4000-8000-000000000002}
 
 services:
   postgres:
@@ -31,7 +28,6 @@ services:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - openswe_pg:/var/lib/postgresql/data
-      - ../migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openswe} -d ${POSTGRES_DB:-openswe}"]
       interval: 5s
@@ -42,54 +38,113 @@ services:
   nats:
     image: nats:2.10-alpine
     restart: unless-stopped
-    # -js = JetStream (required for work queue)
-    # -m  = monitoring (pending messages, etc.)
     command: ["-js", "-m", "8222", "-sd", "/data"]
     ports:
       - "${NATS_HOST_PORT:-4222}:4222"
       - "${NATS_MONITOR_HOST_PORT:-8222}:8222"
     volumes:
       - openswe_nats:/data
-    # Official nats image has no shell utilities for HTTP probes; readiness is
-    # "container started". JetStream is available almost immediately after start.
 
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
     restart: unless-stopped
     command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
-    env_file:
-      - .env
     environment:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      FIREWORKS_API_KEY: ${FIREWORKS_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     volumes:
       - ./litellm_config.yaml:/app/config.yaml:ro
     ports:
       - "${LITELLM_HOST_PORT:-4000}:4000"
-    # LiteLLM image may not have a health endpoint early; don't block stack on it.
     profiles: ["with-litellm"]
 
-  # Shared image (one build) — per-service Dockerfiles still exist for dedicated builds.
-  # Override command per role to save disk when iterating locally.
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    image: openswe-platform:local
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://openswe:openswe@postgres:5432/openswe}
+    command: ["python", "-m", "openswe_platform.migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.api
     image: openswe-platform:local
     restart: unless-stopped
-    env_file:
-      - .env
-    environment: &app_env
+    environment:
+      <<: *runtime
       SERVICE_NAME: api
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://openswe:openswe@postgres:5432/openswe}
-      NATS_URL: ${NATS_URL:-nats://nats:4222}
+      API_AUTH_DISABLED: ${API_AUTH_DISABLED:-true}
+      PLATFORM_API_TOKEN: ${PLATFORM_API_TOKEN:-}
+      PLATFORM_JWT_SECRET: ${PLATFORM_JWT_SECRET:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      OUTBOX_POLL_INTERVAL_SECONDS: ${OUTBOX_POLL_INTERVAL_SECONDS:-1}
+      MCP_STDIO_ALLOWED: ${MCP_STDIO_ALLOWED:-false}
+      MCP_ALLOW_PRIVATE_NETWORKS: ${MCP_ALLOW_PRIVATE_NETWORKS:-false}
+      MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-120}
+      MAX_MCP_SERVERS_PER_RUN: ${MAX_MCP_SERVERS_PER_RUN:-10}
+    command: ["uvicorn", "openswe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "${API_HOST_PORT:-8080}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  webhook:
+    image: openswe-platform:local
+    restart: unless-stopped
+    environment:
+      <<: *runtime
+      SERVICE_NAME: webhook
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      WEBHOOK_SIGNATURES_REQUIRED: ${WEBHOOK_SIGNATURES_REQUIRED:-false}
+      OUTBOX_POLL_INTERVAL_SECONDS: ${OUTBOX_POLL_INTERVAL_SECONDS:-1}
+    command: ["uvicorn", "openswe_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
+    ports:
+      - "${WEBHOOK_HOST_PORT:-8081}:8081"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  harness:
+    image: openswe-platform:local
+    restart: unless-stopped
+    environment:
+      <<: *runtime
+      SERVICE_NAME: harness
+      WORKER_ID: ${WORKER_ID:-harness-1}
       LLM_MODE: ${LLM_MODE:-auto}
       LITELLM_ENABLED: ${LITELLM_ENABLED:-false}
       LITELLM_BASE_URL: ${LITELLM_BASE_URL:-}
       LITELLM_API_KEY: ${LITELLM_API_KEY:-sk-litellm}
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-openai}
-      DEFAULT_MODEL: ${DEFAULT_MODEL:-openai:gpt-4o-mini}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -97,80 +152,43 @@ services:
       FIREWORKS_API_KEY: ${FIREWORKS_API_KEY:-}
       FIREWORKS_BASE_URL: ${FIREWORKS_BASE_URL:-https://api.fireworks.ai/inference/v1}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      DEFAULT_SANDBOX_PROVIDER: ${DEFAULT_SANDBOX_PROVIDER:-daytona}
-      API_AUTH_DISABLED: ${API_AUTH_DISABLED:-true}
-      OUTBOX_POLL_INTERVAL_SECONDS: ${OUTBOX_POLL_INTERVAL_SECONDS:-1}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
-      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
-      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
       LEASE_TTL_SECONDS: ${LEASE_TTL_SECONDS:-60}
       HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-15}
+      MAX_RUN_DURATION_SECONDS: ${MAX_RUN_DURATION_SECONDS:-14400}
       MAX_RUN_RETRIES: ${MAX_RUN_RETRIES:-3}
+      ALLOW_STUB_SANDBOXES: ${ALLOW_STUB_SANDBOXES:-true}
       DAYTONA_API_KEY: ${DAYTONA_API_KEY:-}
+      AGENT_SANDBOX_KUBECONFIG: ${AGENT_SANDBOX_KUBECONFIG:-}
+      AGENT_SANDBOX_NAMESPACE: ${AGENT_SANDBOX_NAMESPACE:-agent-sandboxes}
       OPENSANDBOX_BASE_URL: ${OPENSANDBOX_BASE_URL:-}
       OPENSANDBOX_API_KEY: ${OPENSANDBOX_API_KEY:-}
       MCP_STDIO_ALLOWED: ${MCP_STDIO_ALLOWED:-false}
-    command: ["uvicorn", "openswe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
-    ports:
-      - "${API_HOST_PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
-
-  webhook:
-    image: openswe-platform:local
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      <<: *app_env
-      SERVICE_NAME: webhook
-    command: ["uvicorn", "openswe_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
-    ports:
-      - "${WEBHOOK_HOST_PORT:-8081}:8081"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      api:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/healthz"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
-
-  # Independent worker: polls NATS JetStream TASKS when idle.
-  harness:
-    image: openswe-platform:local
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      <<: *app_env
-      SERVICE_NAME: harness
+      MCP_ALLOW_PRIVATE_NETWORKS: ${MCP_ALLOW_PRIVATE_NETWORKS:-false}
+      MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-120}
     command: ["python", "-m", "openswe_platform.harness.worker"]
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       nats:
         condition: service_started
-      api:
-        condition: service_started
-    # Worker has no HTTP server — disable image HEALTHCHECK from Dockerfile.api
     healthcheck:
       disable: true
-    # No ports — pure consumer. Scale with: --scale harness=N
+
+  ui:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.ui
+    image: openswe-ui:local
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: api:8080
+      NGINX_ENVSUBST_FILTER: API_UPSTREAM
+    ports:
+      - "${UI_HOST_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   openswe_pg:

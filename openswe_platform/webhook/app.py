@@ -16,7 +16,7 @@ from openswe_platform.common.config import get_settings
 from openswe_platform.common.db import dispose_engine, get_session_factory, session_scope
 from openswe_platform.common.errors import PlatformError, UnauthorizedError
 from openswe_platform.common.messaging import NatsBus
-from openswe_platform.common.outbox import outbox_publisher_loop
+from openswe_platform.common.outbox import outbox_supervisor_loop
 from openswe_platform.webhook.handlers import accept_delivery, apply_ingress_command
 from openswe_platform.webhook.normalize import (
     normalize_github,
@@ -32,33 +32,27 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     stop = asyncio.Event()
-    publisher_task: asyncio.Task | None = None
-    bus: NatsBus | None = None
-    try:
-        bus = NatsBus(settings.nats_url)
-        await bus.connect()
+    app.state.nats = None
+
+    def _set_connection(bus: NatsBus | None) -> None:
         app.state.nats = bus
-        publisher_task = asyncio.create_task(
-            outbox_publisher_loop(
-                get_session_factory(),
-                bus,
-                interval=settings.outbox_poll_interval_seconds,
-                stop_event=stop,
-            )
+
+    publisher_task = asyncio.create_task(
+        outbox_supervisor_loop(
+            get_session_factory(),
+            nats_url=settings.nats_url,
+            interval=settings.outbox_poll_interval_seconds,
+            stop_event=stop,
+            on_connection=_set_connection,
         )
-    except Exception:
-        logger.exception("NATS unavailable; webhook outbox will not publish")
-        app.state.nats = None
+    )
     yield
     stop.set()
-    if publisher_task:
-        publisher_task.cancel()
-        try:
-            await publisher_task
-        except asyncio.CancelledError:
-            pass
-    if bus:
-        await bus.close()
+    publisher_task.cancel()
+    try:
+        await publisher_task
+    except asyncio.CancelledError:
+        pass
     await dispose_engine()
 
 
@@ -74,9 +68,17 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/readyz")
-    async def readyz() -> dict[str, str]:
+    async def readyz(request: Request) -> dict[str, str]:
         async with session_scope() as session:
             await session.execute(__import__("sqlalchemy", fromlist=["text"]).text("SELECT 1"))
+        bus = getattr(request.app.state, "nats", None)
+        if bus is None or not bus.connected:
+            raise PlatformError(
+                "Not ready",
+                status=503,
+                detail="NATS publisher is not connected",
+                error_code="nats_unavailable",
+            )
         return {"status": "ready"}
 
     @app.post("/hooks/github")
@@ -88,6 +90,13 @@ def create_app() -> FastAPI:
     ) -> dict:
         settings = get_settings()
         body = await request.body()
+        if settings.webhook_signatures_required and not settings.github_webhook_secret:
+            raise PlatformError(
+                "Webhook verification unavailable",
+                status=503,
+                detail="GITHUB_WEBHOOK_SECRET is required",
+                error_code="webhook_secret_not_configured",
+            )
         if not verify_github_signature(settings.github_webhook_secret, body, x_hub_signature_256):
             raise UnauthorizedError("invalid github signature")
 
@@ -121,6 +130,13 @@ def create_app() -> FastAPI:
     ) -> dict:
         settings = get_settings()
         body = await request.body()
+        if settings.webhook_signatures_required and not settings.slack_signing_secret:
+            raise PlatformError(
+                "Webhook verification unavailable",
+                status=503,
+                detail="SLACK_SIGNING_SECRET is required",
+                error_code="webhook_secret_not_configured",
+            )
         if not verify_slack_signature(
             settings.slack_signing_secret,
             body,

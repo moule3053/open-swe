@@ -9,7 +9,7 @@ Implementation of [`SERVICE_CONTRACTS.md`](./SERVICE_CONTRACTS.md).
 | **API** | `openswe_platform.api.app:app` | `deploy/Dockerfile.api` | 8080 | Tasks, approvals, MCP CRUD, SSE, **outbox → NATS** |
 | **Webhook** | `openswe_platform.webhook.app:app` | `deploy/Dockerfile.webhook` | 8081 | GitHub/Slack ingress → Postgres + outbox |
 | **Harness** | `openswe_platform.harness.worker` | `deploy/Dockerfile.harness` | — | **NATS consumer**; lease, LiteLLM, sandboxes, MCP, Postgres checkpoints |
-| **UI** | `ui/` | (existing) | — | Point at API base URL |
+| **UI** | `ui/` | `deploy/Dockerfile.ui` | 3000 | `/platform` task console; same-origin proxy to API |
 
 ### Does the harness run separately?
 
@@ -30,19 +30,21 @@ docker-compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --scale
 
 | Dep | Compose service | Notes |
 |---|---|---|
-| PostgreSQL | `postgres` | Schema from `migrations/001_init.sql` on first boot |
+| PostgreSQL | `postgres` | `migrate` job applies the idempotent schema before services start |
 | NATS JetStream | `nats` | `-js` enabled; monitor on `:8222` |
 | LLM providers | env on harness | Direct OpenAI/Anthropic/Fireworks/Google (**default**) |
 | LiteLLM | `litellm` (profile `with-litellm`) | **Optional** proxy when `LITELLM_ENABLED=true` |
 
-Sandboxes: `daytona` (default), `agent_sandbox`, `opensandbox` — stubs if credentials missing.
+Sandboxes: `daytona` (default), `agent_sandbox`, `opensandbox`. Real Daytona handles run
+through `deepagents.create_deep_agent`. Stub sandboxes are fail-closed by default and can only be
+enabled explicitly with `ALLOW_STUB_SANDBOXES=true` for local control-plane/UI testing.
 
 ## Docker Compose (recommended local)
 
 Files:
 
-- `deploy/docker-compose.yml` — postgres, nats, api, webhook, harness (+ optional litellm)
-- `deploy/Dockerfile.api` / `Dockerfile.webhook` / `Dockerfile.harness`
+- `deploy/docker-compose.yml` — postgres, nats, migration, api, webhook, harness, UI (+ optional litellm)
+- `deploy/Dockerfile.api` / `Dockerfile.webhook` / `Dockerfile.harness` / `Dockerfile.ui`
 - `deploy/.env.example` — template (committed)
 - `deploy/.env` — local values (gitignored; created from example)
 
@@ -77,6 +79,15 @@ Watch harness pick up the job (`make platform-logs`). Task status:
 ```bash
 curl -s http://localhost:8080/v1/tasks | jq .
 ```
+
+Open the platform console at `http://localhost:3000/platform`. Nginx serves the SPA and proxies
+`/v1/*` to the API service, including the unbuffered SSE event stream. The UI supports task
+creation, task status/activity, mid-run guidance and cancellation, approvals, model/sandbox
+defaults, and MCP server create/test/delete.
+
+Compose does not inject the complete `.env` into every service. Provider and sandbox credentials
+are available only to the harness (or the optional LiteLLM container), webhook secrets only to the
+webhook service, and API authentication/encryption values only to the API.
 
 ### LLM: direct providers (default) vs optional LiteLLM
 
@@ -129,6 +140,7 @@ deploy/
   Dockerfile.api
   Dockerfile.webhook
   Dockerfile.harness
+  Dockerfile.ui
   docker-compose.yml
   .env.example
   litellm_config.yaml
@@ -137,7 +149,8 @@ deploy/
 
 ## Kubernetes
 
-KEDA and multi-replica Deployments live under `deploy/k8s/` (not used by Compose):
+KEDA, the schema migration Job, and multi-replica API/webhook/harness/UI Deployments live under
+`deploy/k8s/` (not used by Compose):
 
 ```bash
 kubectl apply -k deploy/k8s/

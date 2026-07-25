@@ -18,7 +18,7 @@ from openswe_platform.common.config import get_settings
 from openswe_platform.common.db import dispose_engine, get_session_factory
 from openswe_platform.common.errors import PlatformError
 from openswe_platform.common.messaging import NatsBus
-from openswe_platform.common.outbox import outbox_publisher_loop
+from openswe_platform.common.outbox import outbox_supervisor_loop
 
 logger = logging.getLogger(__name__)
 
@@ -27,35 +27,29 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     stop = asyncio.Event()
-    publisher_task: asyncio.Task | None = None
-    bus: NatsBus | None = None
-    try:
-        bus = NatsBus(settings.nats_url)
-        await bus.connect()
+    app.state.nats = None
+
+    def _set_connection(bus: NatsBus | None) -> None:
         app.state.nats = bus
-        publisher_task = asyncio.create_task(
-            outbox_publisher_loop(
-                get_session_factory(),
-                bus,
-                interval=settings.outbox_poll_interval_seconds,
-                stop_event=stop,
-            )
+
+    publisher_task = asyncio.create_task(
+        outbox_supervisor_loop(
+            get_session_factory(),
+            nats_url=settings.nats_url,
+            interval=settings.outbox_poll_interval_seconds,
+            stop_event=stop,
+            on_connection=_set_connection,
         )
-    except Exception:
-        logger.exception("NATS unavailable at startup; outbox will not publish until reconnect")
-        app.state.nats = None
+    )
 
     yield
 
     stop.set()
-    if publisher_task:
-        publisher_task.cancel()
-        try:
-            await publisher_task
-        except asyncio.CancelledError:
-            pass
-    if bus:
-        await bus.close()
+    publisher_task.cancel()
+    try:
+        await publisher_task
+    except asyncio.CancelledError:
+        pass
     await dispose_engine()
 
 
@@ -63,7 +57,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Open SWE API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=list(get_settings().cors_origins),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

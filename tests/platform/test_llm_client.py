@@ -1,9 +1,11 @@
+import httpx
 import pytest
 
 from openswe_platform.common.config import clear_settings_cache
 from openswe_platform.harness.llm_client import (
     DirectLLMClient,
     LiteLLMClient,
+    _post_with_retry,
     make_llm_client,
     parse_model_id,
     resolve_llm_mode,
@@ -93,3 +95,22 @@ async def test_direct_openai_requires_key(monkeypatch):
             model="openai:gpt-4o-mini",
             messages=[{"role": "user", "content": "hi"}],
         )
+
+
+@pytest.mark.asyncio
+async def test_llm_request_retries_429(monkeypatch):
+    attempts = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(429 if attempts == 1 else 200, json={"ok": True})
+
+    async def no_sleep(_delay: float) -> None:
+        return None
+
+    monkeypatch.setattr("openswe_platform.harness.llm_client.asyncio.sleep", no_sleep)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        response = await _post_with_retry(client, "https://example.com/chat")
+    assert response.status_code == 200
+    assert attempts == 2

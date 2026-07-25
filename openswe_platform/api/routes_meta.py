@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from openswe_platform.api.deps import AuthContext, get_auth, get_db
+from openswe_platform.api.deps import AuthContext, get_auth, get_db, require_admin
 from openswe_platform.common.config import get_settings
 from openswe_platform.common.enums import SandboxProvider
 from openswe_platform.common.models import OrgSettings, UserSettings
@@ -22,8 +22,18 @@ async def healthz() -> dict[str, str]:
 
 
 @router.get("/readyz")
-async def readyz(db: AsyncSession = Depends(get_db)) -> dict[str, str]:
+async def readyz(request: Request, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
     await db.execute(__import__("sqlalchemy", fromlist=["text"]).text("SELECT 1"))
+    bus = getattr(request.app.state, "nats", None)
+    if bus is None or not bus.connected:
+        from openswe_platform.common.errors import PlatformError
+
+        raise PlatformError(
+            "Not ready",
+            status=503,
+            detail="NATS publisher is not connected",
+            error_code="nats_unavailable",
+        )
     return {"status": "ready"}
 
 
@@ -144,6 +154,7 @@ async def patch_org_settings(
         from openswe_platform.common.errors import ForbiddenError
 
         raise ForbiddenError()
+    require_admin(auth)
     row = await db.get(OrgSettings, auth.org_id)
     if row is None:
         row = OrgSettings(org_id=auth.org_id)
@@ -159,3 +170,82 @@ async def patch_org_settings(
         "mcp_stdio_allowed": row.mcp_stdio_allowed,
         "max_mcp_servers_per_run": row.max_mcp_servers_per_run,
     }
+
+
+class OrgModelsBody(BaseModel):
+    models: list[str]
+
+
+def _org_models(row: OrgSettings | None, default_model: str) -> list[str]:
+    configured = (row.settings or {}).get("models") if row else None
+    if isinstance(configured, list):
+        models = [str(model) for model in configured if str(model).strip()]
+        if models:
+            return models
+    return [row.default_model if row and row.default_model else default_model]
+
+
+@router.get("/v1/models")
+async def list_models(
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth),
+) -> dict[str, Any]:
+    settings = get_settings()
+    row = await db.get(OrgSettings, auth.org_id)
+    models = _org_models(row, settings.default_model)
+    return {
+        "items": [
+            {
+                "id": model,
+                "default": model == (row.default_model if row else settings.default_model),
+            }
+            for model in models
+        ]
+    }
+
+
+@router.get("/v1/orgs/{org_id}/models")
+async def get_org_models(
+    org_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth),
+) -> dict[str, Any]:
+    if str(auth.org_id) != org_id:
+        from openswe_platform.common.errors import ForbiddenError
+
+        raise ForbiddenError()
+    row = await db.get(OrgSettings, auth.org_id)
+    return {"items": _org_models(row, get_settings().default_model)}
+
+
+@router.put("/v1/orgs/{org_id}/models")
+async def put_org_models(
+    org_id: str,
+    body: OrgModelsBody,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth),
+) -> dict[str, Any]:
+    if str(auth.org_id) != org_id:
+        from openswe_platform.common.errors import ForbiddenError
+
+        raise ForbiddenError()
+    require_admin(auth)
+    models = list(dict.fromkeys(model.strip() for model in body.models if model.strip()))
+    if not models:
+        from openswe_platform.common.errors import PlatformError
+
+        raise PlatformError(
+            "Models required",
+            status=400,
+            detail="At least one model must be configured",
+            error_code="models_required",
+        )
+    row = await db.get(OrgSettings, auth.org_id)
+    if row is None:
+        row = OrgSettings(org_id=auth.org_id)
+        db.add(row)
+    row.settings = {**(row.settings or {}), "models": models}
+    if row.default_model not in models:
+        row.default_model = models[0]
+    await db.flush()
+    return {"items": models, "default_model": row.default_model}

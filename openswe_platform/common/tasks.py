@@ -582,18 +582,18 @@ async def save_checkpoint(
 async def load_latest_checkpoint(
     session: AsyncSession,
     *,
-    run_id: uuid.UUID,
+    run_id: uuid.UUID | None = None,
+    task_id: uuid.UUID | None = None,
     thread_key: str = "default",
 ) -> GraphCheckpoint | None:
-    result = await session.execute(
-        select(GraphCheckpoint)
-        .where(
-            GraphCheckpoint.run_id == run_id,
-            GraphCheckpoint.thread_key == thread_key,
-        )
-        .order_by(GraphCheckpoint.version.desc())
-        .limit(1)
-    )
+    if run_id is None and task_id is None:
+        raise ValueError("run_id or task_id is required")
+    query = select(GraphCheckpoint).where(GraphCheckpoint.thread_key == thread_key)
+    if task_id is not None:
+        query = query.where(GraphCheckpoint.task_id == task_id)
+    else:
+        query = query.where(GraphCheckpoint.run_id == run_id)
+    result = await session.execute(query.order_by(GraphCheckpoint.created_at.desc()).limit(1))
     return result.scalar_one_or_none()
 
 
@@ -639,16 +639,21 @@ async def requeue_expired_leases(
     """Reaper: running tasks with expired leases -> queued or failed."""
     now = datetime.now(UTC)
     result = await session.execute(
-        select(Run).where(
+        select(Run)
+        .where(
             Run.status == RunStatus.ACTIVE.value,
             Run.lease_expires_at.is_not(None),
             Run.lease_expires_at < now,
         )
+        .with_for_update(skip_locked=True)
     )
     runs = list(result.scalars().all())
     count = 0
     for run in runs:
-        task = await session.get(Task, run.task_id)
+        task_result = await session.execute(
+            select(Task).where(Task.task_id == run.task_id).with_for_update()
+        )
+        task = task_result.scalar_one_or_none()
         if task is None or task.status != TaskStatus.RUNNING.value:
             continue
         run.status = RunStatus.FAILED.value

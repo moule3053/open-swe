@@ -1,6 +1,127 @@
-from openswe_platform.harness.agents import REGISTRY, get_agent
+import pytest
+from deepagents.backends import StateBackend
+from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
+from langchain_core.messages import AIMessage
+
+from openswe_platform.harness import agents
+from openswe_platform.harness.agents import REGISTRY, RunContext, get_agent
+from openswe_platform.harness.sandboxes import SandboxRef
 
 
 def test_all_agent_types():
     for name in ("coding", "reviewer", "analyzer", "chat"):
         assert get_agent(name) is REGISTRY[name]
+
+
+@pytest.mark.asyncio
+async def test_agent_resumes_checkpoint_and_injects_boundary_guidance():
+    seen_messages = []
+
+    class FakeLlm:
+        async def chat_completions(self, *, model, messages, **_kwargs):
+            seen_messages.extend(messages)
+            return {"choices": [{"message": {"content": "DONE: complete"}}]}
+
+        def message_content(self, response):
+            return response["choices"][0]["message"]["content"]
+
+    class FakeSandbox:
+        async def exec(self, *_args, **_kwargs):
+            raise AssertionError("sandbox should not be called")
+
+    events = []
+
+    async def on_step(event_type, payload):
+        events.append((event_type, payload))
+
+    first = True
+
+    async def on_boundary():
+        nonlocal first
+        if first:
+            first = False
+            return [{"role": "user", "content": "new guidance"}]
+        return []
+
+    context = RunContext(
+        org_id="org",
+        task_id="task",
+        run_id="run",
+        thread_id="thread",
+        agent_type="coding",
+        repo=None,
+        base_ref="main",
+        model="fake:model",
+        prompt=None,
+        messages=[],
+        sandbox_provider="daytona",
+        sandbox_id="sandbox",
+        mcp_snapshot=[],
+        checkpoint={"step": 2, "messages": [{"role": "user", "content": "old"}]},
+    )
+    result = await get_agent("coding").run(
+        context,
+        llm=FakeLlm(),
+        sandbox=FakeSandbox(),
+        sandbox_ref=SandboxRef(provider="daytona", sandbox_id="sandbox"),
+        mcp_sessions=[],
+        on_step=on_step,
+        on_boundary=on_boundary,
+    )
+    assert result.success
+    assert [message["content"] for message in seen_messages[-2:]] == ["old", "new guidance"]
+    assert any(event_type == "checkpoint" for event_type, _payload in events)
+
+
+@pytest.mark.asyncio
+async def test_real_backend_uses_deep_agent_runtime(monkeypatch):
+    class FakeModel(FakeMessagesListChatModel):
+        def bind_tools(self, *_args, **_kwargs):
+            return self
+
+    monkeypatch.setattr(
+        agents,
+        "_make_deep_agent_model",
+        lambda _model: FakeModel(responses=[AIMessage(content="deep agent complete")]),
+    )
+    events = []
+
+    async def on_step(event_type, payload):
+        events.append((event_type, payload))
+
+    async def on_boundary():
+        return []
+
+    context = RunContext(
+        org_id="org",
+        task_id="task",
+        run_id="run",
+        thread_id="thread",
+        agent_type="coding",
+        repo=None,
+        base_ref="main",
+        model="fake:model",
+        prompt="finish",
+        messages=[],
+        sandbox_provider="daytona",
+        sandbox_id="sandbox",
+        mcp_snapshot=[],
+        checkpoint=None,
+    )
+    result = await get_agent("coding").run(
+        context,
+        llm=None,
+        sandbox=None,
+        sandbox_ref=SandboxRef(
+            provider="daytona",
+            sandbox_id="sandbox",
+            handle=StateBackend(),
+        ),
+        mcp_sessions=[],
+        on_step=on_step,
+        on_boundary=on_boundary,
+    )
+    assert result.success
+    assert result.final_message == "deep agent complete"
+    assert result.checkpoint_blob["runtime"] == "deepagents"
+    assert [event for event, _payload in events].count("model_started") == 1

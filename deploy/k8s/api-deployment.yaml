@@ -15,6 +15,17 @@ spec:
       labels:
         app: openswe-api
     spec:
+      initContainers:
+        - name: migrate
+          image: openswe-platform:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "openswe_platform.migrate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_URL
       containers:
         - name: api
           image: openswe-platform:latest
@@ -26,12 +37,27 @@ spec:
           envFrom:
             - configMapRef:
                 name: openswe-config
-            - secretRef:
-                name: openswe-secrets
-                optional: true
           env:
             - name: SERVICE_NAME
               value: api
+            - name: PLATFORM_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: PLATFORM_API_TOKEN
+                  optional: true
+            - name: PLATFORM_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: PLATFORM_JWT_SECRET
+                  optional: true
+            - name: TOKEN_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: TOKEN_ENCRYPTION_KEY
+                  optional: true
           readinessProbe:
             httpGet:
               path: /readyz

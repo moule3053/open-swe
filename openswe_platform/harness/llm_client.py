@@ -16,6 +16,7 @@ Model id forms for direct mode:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -26,6 +27,43 @@ import httpx
 from openswe_platform.common.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+async def _post_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    attempts: int = 5,
+    **kwargs: Any,
+) -> httpx.Response:
+    for attempt in range(attempts):
+        try:
+            response = await client.post(url, **kwargs)
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError):
+            if attempt + 1 >= attempts:
+                raise
+        else:
+            if response.status_code not in RETRYABLE_STATUS_CODES or attempt + 1 >= attempts:
+                return response
+            retry_after = response.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    delay = min(float(retry_after), 30.0)
+                except ValueError:
+                    delay = min(2**attempt, 10)
+            else:
+                delay = min(2**attempt, 10)
+            logger.warning(
+                "LLM request returned %s; retrying in %.1fs", response.status_code, delay
+            )
+            await asyncio.sleep(delay)
+            continue
+        delay = min(2**attempt, 10)
+        logger.warning("LLM request failed to connect; retrying in %.1fs", delay)
+        await asyncio.sleep(delay)
+    raise RuntimeError("LLM retry loop exhausted")
 
 
 class LLMClient(Protocol):
@@ -124,7 +162,8 @@ class LiteLLMClient:
         }
         body = {"model": model_name, "messages": messages, **kwargs}
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
+            resp = await _post_with_retry(
+                client,
                 f"{self.base_url}/v1/chat/completions",
                 headers=headers,
                 json=body,
@@ -241,7 +280,8 @@ class DirectLLMClient:
         }
         body = {"model": model, "messages": messages, **kwargs}
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
+            resp = await _post_with_retry(
+                client,
                 f"{base_url}/chat/completions",
                 headers=headers,
                 json=body,
@@ -297,7 +337,8 @@ class DirectLLMClient:
             "Content-Type": "application/json",
         }
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
+            resp = await _post_with_retry(
+                client,
                 f"{self.anthropic_base_url}/v1/messages",
                 headers=headers,
                 json=body,
@@ -343,7 +384,7 @@ class DirectLLMClient:
             f"{model}:generateContent?key={self.google_api_key}"
         )
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(url, json=body)
+            resp = await _post_with_retry(client, url, json=body)
             if resp.status_code >= 400:
                 logger.error("google error %s: %s", resp.status_code, resp.text[:500])
             resp.raise_for_status()

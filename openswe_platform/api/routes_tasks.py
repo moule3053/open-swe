@@ -13,10 +13,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from openswe_platform.api.deps import AuthContext, get_auth, get_db
+from openswe_platform.api.deps import AuthContext, get_auth, get_db, require_task_actor
 from openswe_platform.common.config import get_settings
 from openswe_platform.common.enums import McpMode, MessageKind, TaskSource
 from openswe_platform.common.errors import PlatformError
+from openswe_platform.common.idempotency import (
+    begin_idempotent_command,
+    finish_idempotent_command,
+)
 from openswe_platform.common.models import Approval, Run, RunEvent, Task
 from openswe_platform.common.serializers import (
     approval_to_dict,
@@ -71,7 +75,15 @@ async def post_task(
     auth: AuthContext = Depends(get_auth),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    _ = idempotency_key  # full idempotency store can be wired later
+    route = "POST /v1/tasks"
+    stored = await begin_idempotent_command(
+        db,
+        org_id=auth.org_id,
+        route=route,
+        key=idempotency_key,
+    )
+    if stored:
+        return stored.body
     settings = get_settings()
     try:
         task = await create_task(
@@ -95,7 +107,14 @@ async def post_task(
         )
     except PlatformError:
         raise
-    return {
+    except ValueError as exc:
+        raise PlatformError(
+            "Invalid task request",
+            status=400,
+            detail=str(exc),
+            error_code="invalid_task_request",
+        ) from exc
+    response = {
         "task_id": str(task.task_id),
         "thread_id": task.thread_id,
         "status": task.status,
@@ -104,6 +123,15 @@ async def post_task(
         "sandbox_provider": task.sandbox_provider,
         "mcp_server_ids": [str(i) for i in (task.mcp_server_ids or [])],
     }
+    await finish_idempotent_command(
+        db,
+        org_id=auth.org_id,
+        route=route,
+        key=idempotency_key or "",
+        status=201,
+        body=response,
+    )
+    return response
 
 
 @router.get("/tasks")
@@ -151,14 +179,39 @@ async def post_message(
     body: MessageBody,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
+    route = f"POST /v1/tasks/{task_id}/messages"
+    stored = await begin_idempotent_command(
+        db, org_id=auth.org_id, route=route, key=idempotency_key
+    )
+    if stored:
+        return stored.body
     task = await db.get(Task, task_id)
     if task is None or task.org_id != auth.org_id:
         raise PlatformError(
             "Not Found", status=404, detail="task not found", error_code="not_found"
         )
-    msg = await add_message(db, task_id=task_id, content=body.content, kind=body.kind)
-    return {"message_id": str(msg.message_id), "kind": msg.kind}
+    require_task_actor(task, auth)
+    try:
+        msg = await add_message(db, task_id=task_id, content=body.content, kind=body.kind)
+    except ValueError as exc:
+        raise PlatformError(
+            "Invalid message",
+            status=400,
+            detail=str(exc),
+            error_code="invalid_message_kind",
+        ) from exc
+    response = {"message_id": str(msg.message_id), "kind": msg.kind}
+    await finish_idempotent_command(
+        db,
+        org_id=auth.org_id,
+        route=route,
+        key=idempotency_key or "",
+        status=200,
+        body=response,
+    )
+    return response
 
 
 @router.post("/tasks/{task_id}/cancel")
@@ -167,14 +220,31 @@ async def post_cancel(
     body: CancelBody,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
+    route = f"POST /v1/tasks/{task_id}/cancel"
+    stored = await begin_idempotent_command(
+        db, org_id=auth.org_id, route=route, key=idempotency_key
+    )
+    if stored:
+        return stored.body
     task = await db.get(Task, task_id)
     if task is None or task.org_id != auth.org_id:
         raise PlatformError(
             "Not Found", status=404, detail="task not found", error_code="not_found"
         )
+    require_task_actor(task, auth)
     task = await cancel_task(db, task_id=task_id, reason=body.reason)
-    return task_to_dict(task)
+    response = task_to_dict(task)
+    await finish_idempotent_command(
+        db,
+        org_id=auth.org_id,
+        route=route,
+        key=idempotency_key or "",
+        status=200,
+        body=response,
+    )
+    return response
 
 
 @router.get("/tasks/{task_id}/events")
@@ -204,9 +274,13 @@ async def list_events(
 async def stream_events(
     task_id: uuid.UUID,
     auth: AuthContext = Depends(get_auth),
+    last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
 ) -> StreamingResponse:
     async def gen():
-        last_seq = 0
+        try:
+            last_seq = int(last_event_id or 0)
+        except ValueError:
+            last_seq = 0
         factory = __import__(
             "openswe_platform.common.db", fromlist=["get_session_factory"]
         ).get_session_factory()
@@ -291,7 +365,14 @@ async def approval_decision(
     body: ApprovalBody,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
+    route = f"POST /v1/approvals/{approval_id}/decision"
+    stored = await begin_idempotent_command(
+        db, org_id=auth.org_id, route=route, key=idempotency_key
+    )
+    if stored:
+        return stored.body
     if body.decision not in {"approved", "rejected"}:
         raise PlatformError(
             "Invalid decision",
@@ -299,6 +380,17 @@ async def approval_decision(
             detail="decision must be approved or rejected",
             error_code="invalid_decision",
         )
+    existing_approval = await db.get(Approval, approval_id)
+    if existing_approval is None:
+        raise PlatformError(
+            "Not Found", status=404, detail="approval not found", error_code="not_found"
+        )
+    existing_task = await db.get(Task, existing_approval.task_id)
+    if existing_task is None or existing_task.org_id != auth.org_id:
+        raise PlatformError(
+            "Not Found", status=404, detail="approval not found", error_code="not_found"
+        )
+    require_task_actor(existing_task, auth)
     approval = await decide_approval(
         db,
         approval_id=approval_id,
@@ -306,9 +398,13 @@ async def approval_decision(
         user_id=auth.user_id,
         comment=body.comment,
     )
-    task = await db.get(Task, approval.task_id)
-    if task is None or task.org_id != auth.org_id:
-        raise PlatformError(
-            "Not Found", status=404, detail="approval not found", error_code="not_found"
-        )
-    return approval_to_dict(approval)
+    response = approval_to_dict(approval)
+    await finish_idempotent_command(
+        db,
+        org_id=auth.org_id,
+        route=route,
+        key=idempotency_key or "",
+        status=200,
+        body=response,
+    )
+    return response
