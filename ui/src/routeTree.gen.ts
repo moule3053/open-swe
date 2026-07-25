@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsageRouteImport } from './routes/usage'
 import { Route as ReviewRouteImport } from './routes/review'
-import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as MySettingsRouteImport } from './routes/my-settings'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
@@ -43,11 +42,6 @@ const UsageRoute = UsageRouteImport.update({
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlatformRoute = PlatformRouteImport.update({
-  id: '/platform',
-  path: '/platform',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MySettingsRoute = MySettingsRouteImport.update({
@@ -171,7 +165,6 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/my-settings': typeof MySettingsRoute
-  '/platform': typeof PlatformRoute
   '/review': typeof ReviewRoute
   '/usage': typeof UsageRoute
   '/admin/evals': typeof AdminEvalsRoute
@@ -197,7 +190,6 @@ export interface FileRoutesByTo {
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/my-settings': typeof MySettingsRoute
-  '/platform': typeof PlatformRoute
   '/review': typeof ReviewRoute
   '/usage': typeof UsageRoute
   '/admin/evals': typeof AdminEvalsRoute
@@ -225,7 +217,6 @@ export interface FileRoutesById {
   '/integrations': typeof IntegrationsRoute
   '/login': typeof LoginRoute
   '/my-settings': typeof MySettingsRoute
-  '/platform': typeof PlatformRoute
   '/review': typeof ReviewRoute
   '/usage': typeof UsageRoute
   '/admin_/evals': typeof AdminEvalsRoute
@@ -254,7 +245,6 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/login'
     | '/my-settings'
-    | '/platform'
     | '/review'
     | '/usage'
     | '/admin/evals'
@@ -280,7 +270,6 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/login'
     | '/my-settings'
-    | '/platform'
     | '/review'
     | '/usage'
     | '/admin/evals'
@@ -307,7 +296,6 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/login'
     | '/my-settings'
-    | '/platform'
     | '/review'
     | '/usage'
     | '/admin_/evals'
@@ -335,7 +323,6 @@ export interface RootRouteChildren {
   IntegrationsRoute: typeof IntegrationsRoute
   LoginRoute: typeof LoginRoute
   MySettingsRoute: typeof MySettingsRoute
-  PlatformRoute: typeof PlatformRoute
   ReviewRoute: typeof ReviewRoute
   UsageRoute: typeof UsageRoute
   AdminEvalsRoute: typeof AdminEvalsRoute
@@ -360,13 +347,6 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof ReviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/platform': {
-      id: '/platform'
-      path: '/platform'
-      fullPath: '/platform'
-      preLoaderRoute: typeof PlatformRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-settings': {
@@ -561,7 +541,6 @@ const rootRouteChildren: RootRouteChildren = {
   IntegrationsRoute: IntegrationsRoute,
   LoginRoute: LoginRoute,
   MySettingsRoute: MySettingsRoute,
-  PlatformRoute: PlatformRoute,
   ReviewRoute: ReviewRoute,
   UsageRoute: UsageRoute,
   AdminEvalsRoute: AdminEvalsRoute,
