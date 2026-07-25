@@ -1,0 +1,33 @@
+# Deprecated alias — use per-service Dockerfiles:
+#   docker build -f deploy/Dockerfile.api -t openswe-api .
+#   docker build -f deploy/Dockerfile.webhook -t openswe-webhook .
+#   docker build -f deploy/Dockerfile.harness -t openswe-harness .
+#
+# This file intentionally builds the API image so old docs/scripts that still
+# reference Dockerfile.platform keep working.
+FROM python:3.12-slim-bookworm AS builder
+
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock README.md ./
+COPY agent ./agent
+COPY openswe_platform ./openswe_platform
+COPY migrations ./migrations
+
+RUN pip install --no-cache-dir uv \
+    && uv sync --no-dev \
+    && uv pip install --python .venv/bin/python asyncpg "sqlalchemy[asyncio]" nats-py
+
+FROM python:3.12-slim-bookworm AS runtime
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 appuser
+COPY --from=builder /app /app
+ENV PATH="/app/.venv/bin:$PATH" PYTHONPATH=/app PYTHONUNBUFFERED=1 SERVICE_NAME=api
+USER appuser
+EXPOSE 8080
+CMD ["uvicorn", "openswe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]

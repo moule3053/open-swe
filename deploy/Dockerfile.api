@@ -1,0 +1,39 @@
+# Open SWE — API control plane
+# Build: docker build -f deploy/Dockerfile.api -t openswe-api .
+FROM python:3.12-slim-bookworm AS builder
+
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock README.md ./
+COPY agent ./agent
+COPY openswe_platform ./openswe_platform
+COPY migrations ./migrations
+
+RUN pip install --no-cache-dir uv \
+    && uv sync --no-dev \
+    && uv pip install --python .venv/bin/python asyncpg "sqlalchemy[asyncio]" nats-py
+
+FROM python:3.12-slim-bookworm AS runtime
+
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 appuser
+
+COPY --from=builder /app /app
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    SERVICE_NAME=api
+
+USER appuser
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8080/healthz || exit 1
+
+CMD ["uvicorn", "openswe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]

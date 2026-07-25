@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openswe-webhook
+  namespace: openswe
+  labels:
+    app: openswe-webhook
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: openswe-webhook
+  template:
+    metadata:
+      labels:
+        app: openswe-webhook
+    spec:
+      containers:
+        - name: webhook
+          image: openswe-platform:latest
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "openswe_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
+          ports:
+            - containerPort: 8081
+              name: http
+          envFrom:
+            - configMapRef:
+                name: openswe-config
+            - secretRef:
+                name: openswe-secrets
+                optional: true
+          env:
+            - name: SERVICE_NAME
+              value: webhook
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openswe-webhook
+  namespace: openswe
+spec:
+  selector:
+    app: openswe-webhook
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

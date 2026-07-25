@@ -1,0 +1,37 @@
+# Open SWE — harness worker (consumes NATS TASKS; one active job per process)
+# Build: docker build -f deploy/Dockerfile.harness -t openswe-harness .
+# Scale independently: docker compose up --scale harness=3
+FROM python:3.12-slim-bookworm AS builder
+
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock README.md ./
+COPY agent ./agent
+COPY openswe_platform ./openswe_platform
+COPY migrations ./migrations
+
+RUN pip install --no-cache-dir uv \
+    && uv sync --no-dev \
+    && uv pip install --python .venv/bin/python asyncpg "sqlalchemy[asyncio]" nats-py
+
+FROM python:3.12-slim-bookworm AS runtime
+
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 appuser
+
+COPY --from=builder /app /app
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    SERVICE_NAME=harness
+
+USER appuser
+
+# No public HTTP port — worker only pulls from NATS JetStream.
+CMD ["python", "-m", "openswe_platform.harness.worker"]

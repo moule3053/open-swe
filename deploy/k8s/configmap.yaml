@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openswe-config
+  namespace: openswe
+data:
+  DATABASE_URL: "postgresql+asyncpg://openswe:openswe@postgres:5432/openswe"
+  NATS_URL: "nats://nats:4222"
+  LITELLM_BASE_URL: "http://litellm:4000"
+  DEFAULT_MODEL: "gpt-4.1"
+  DEFAULT_SANDBOX_PROVIDER: "daytona"
+  API_AUTH_DISABLED: "true"
+  LEASE_TTL_SECONDS: "60"
+  HEARTBEAT_INTERVAL_SECONDS: "15"
+  MAX_RUN_RETRIES: "3"

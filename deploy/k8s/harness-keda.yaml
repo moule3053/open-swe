@@ -1,0 +1,24 @@
+# Requires KEDA + optional NATS scaler.
+# Scales harness Deployment so each pod runs at most one task (worker concurrency=1).
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: openswe-harness
+  namespace: openswe
+spec:
+  scaleTargetRef:
+    name: openswe-harness
+  minReplicaCount: 0
+  maxReplicaCount: 50
+  cooldownPeriod: 120
+  pollingInterval: 15
+  triggers:
+    # Preferred: Prometheus metric tasks_queued (export from API later).
+    # Fallback: NATS JetStream pending on TASKS stream consumer.
+    - type: nats-jetstream
+      metadata:
+        natsServerMonitoringEndpoint: nats.openswe.svc:8222
+        account: "$G"
+        stream: TASKS
+        consumer: harness-workers
+        lagThreshold: "1"

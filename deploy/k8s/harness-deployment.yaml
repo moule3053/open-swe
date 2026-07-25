@@ -1,0 +1,62 @@
+# Harness workers: one active run per pod (concurrency=1).
+# Scale with KEDA (see harness-keda.yaml) on JetStream / queue depth.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openswe-harness
+  namespace: openswe
+  labels:
+    app: openswe-harness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openswe-harness
+  template:
+    metadata:
+      labels:
+        app: openswe-harness
+    spec:
+      containers:
+        - name: harness
+          image: openswe-platform:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "openswe_platform.harness.worker"]
+          envFrom:
+            - configMapRef:
+                name: openswe-config
+            - secretRef:
+                name: openswe-secrets
+                optional: true
+          env:
+            - name: SERVICE_NAME
+              value: harness
+            - name: WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: DAYTONA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: DAYTONA_API_KEY
+                  optional: true
+            - name: OPENSANDBOX_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: OPENSANDBOX_BASE_URL
+                  optional: true
+            - name: OPENSANDBOX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-secrets
+                  key: OPENSANDBOX_API_KEY
+                  optional: true
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi

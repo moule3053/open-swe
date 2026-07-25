@@ -32,6 +32,11 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.0",
     "stagehand>=3.21.0",
     "websockets>=15.0.1",
+    # Multi-service platform
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "nats-py>=2.9.0",
+    "pydantic>=2.10.0",
 ]
 
 [project.optional-dependencies]
@@ -59,7 +64,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["agent"]
+packages = ["agent", "openswe_platform"]
 
 [tool.ruff]
 line-length = 100
@@ -77,6 +82,7 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
+    "B008",  # FastAPI Depends() in defaults is idiomatic
 ]
 
 [tool.pytest.ini_options]
@@ -88,6 +94,6 @@ venvPath = "."
 venv = ".venv"
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
-include = ["agent", "tests"]
+include = ["agent", "openswe_platform", "tests"]
 exclude = ["**/node_modules", "**/__pycache__", ".venv", "ui", "**/.*"]
 reportMissingTypeStubs = false

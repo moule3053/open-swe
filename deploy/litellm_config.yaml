@@ -1,0 +1,18 @@
+# Minimal LiteLLM config for local docker-compose.
+# Set OPENAI_API_KEY / ANTHROPIC_API_KEY in deploy/.env for real models.
+model_list:
+  - model_name: gpt-4.1
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: claude-sonnet-4
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
