@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import tempfile
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -206,10 +207,87 @@ class OpenSandboxProvider(SandboxProviderBase):
         logger.info("opensandbox delete %s", ref.sandbox_id)
 
 
+class LocalProvider(SandboxProviderBase):
+    """Local shell execution (host-direct)."""
+
+    name = SandboxProvider.LOCAL.value
+
+    @staticmethod
+    def _root_dir(sandbox_id: str) -> str:
+        if os.path.basename(sandbox_id) != sandbox_id:
+            raise ValueError("Invalid local sandbox id")
+        base = os.environ.get(
+            "LOCAL_SANDBOX_ROOT_DIR",
+            os.path.join(tempfile.gettempdir(), "open-swe-sandboxes"),
+        )
+        return os.path.join(base, sandbox_id)
+
+    async def create(self, *, task_id: str, metadata: dict[str, Any] | None = None) -> SandboxRef:
+        from agent.integrations.local import create_local_sandbox
+
+        sid = f"local-{task_id[:8]}-{uuid.uuid4().hex[:8]}"
+        root_dir = self._root_dir(sid)
+        backend = await asyncio.to_thread(create_local_sandbox, sid, root_dir=root_dir)
+        return SandboxRef(
+            provider=self.name,
+            sandbox_id=sid,
+            metadata={"root_dir": root_dir, **(metadata or {})},
+            handle=backend,
+        )
+
+    async def connect(self, sandbox_id: str) -> SandboxRef:
+        from agent.integrations.local import create_local_sandbox
+
+        root_dir = self._root_dir(sandbox_id)
+        backend = await asyncio.to_thread(
+            create_local_sandbox,
+            sandbox_id,
+            root_dir=root_dir,
+        )
+        return SandboxRef(
+            provider=self.name,
+            sandbox_id=sandbox_id,
+            metadata={"root_dir": root_dir},
+            handle=backend,
+        )
+
+    async def exec(self, ref: SandboxRef, command: str, timeout: int = 120) -> ExecResult:
+        handle = ref.handle
+        if handle and hasattr(handle, "execute"):
+            result = await asyncio.to_thread(handle.execute, command, timeout=timeout)
+            return ExecResult(
+                exit_code=getattr(result, "exit_code", 0) or 0,
+                stdout=str(getattr(result, "output", getattr(result, "stdout", result)) or ""),
+                stderr=str(getattr(result, "stderr", "") or ""),
+            )
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            return ExecResult(
+                exit_code=proc.returncode or 0,
+                stdout=stdout.decode(errors="replace"),
+                stderr=stderr.decode(errors="replace"),
+            )
+        except TimeoutError:
+            proc.kill()
+            return ExecResult(exit_code=124, stdout="", stderr="Command timed out")
+
+    async def stop(self, ref: SandboxRef) -> None:
+        logger.info("local sandbox stop %s", ref.sandbox_id)
+
+    async def delete(self, ref: SandboxRef) -> None:
+        logger.info("local sandbox delete %s", ref.sandbox_id)
+
+
 _REGISTRY: dict[str, SandboxProviderBase] = {
     SandboxProvider.DAYTONA.value: DaytonaProvider(),
     SandboxProvider.AGENT_SANDBOX.value: AgentSandboxProvider(),
     SandboxProvider.OPENSANDBOX.value: OpenSandboxProvider(),
+    SandboxProvider.LOCAL.value: LocalProvider(),
 }
 
 

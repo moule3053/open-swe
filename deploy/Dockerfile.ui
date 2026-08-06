@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:22-slim AS build
 
 WORKDIR /app
 RUN corepack enable
@@ -7,7 +7,16 @@ RUN pnpm install --frozen-lockfile
 COPY ui/ ./
 ENV VITE_DEVTOOLS=false
 ENV VITE_PLATFORM_API_BASE_URL=""
-RUN pnpm run build
+ENV NODE_OPTIONS="--max-old-space-size=3072"
+RUN if [ -d ".output/public" ] && [ "$(ls -A .output/public 2>/dev/null)" ]; then \
+      echo "Using pre-built UI assets from .output/public"; \
+    elif [ -d "ui/.output/public" ] && [ "$(ls -A ui/.output/public 2>/dev/null)" ]; then \
+      echo "Using pre-built UI assets from ui/.output/public"; \
+      mkdir -p .output && cp -r ui/.output/public .output/public; \
+    else \
+      echo "Building UI in container..."; \
+      pnpm run build; \
+    fi
 
 FROM nginx:1.27-alpine
 COPY deploy/nginx.ui.conf /etc/nginx/templates/default.conf.template

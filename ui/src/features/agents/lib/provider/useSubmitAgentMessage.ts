@@ -3,7 +3,7 @@ import { useStreamContext as useAgentThreadStream } from "@langchain/react"
 
 import type { SendAgentMessageVariables } from "@/features/agents/lib/queries"
 import type { AgentThread } from "@/features/agents/lib/types"
-import { AgentsApiError, agentsApi } from "@/features/agents/lib/api"
+import { agentsApi } from "@/features/agents/lib/api"
 import {
   agentThreadKeys,
   invalidateAgentThreadLists,
@@ -101,18 +101,12 @@ export function useSubmitAgentMessage(threadId: string) {
         }
       }
 
-      if (stream.isLoading) {
+      const currentThread = queryClient.getQueryData<AgentThread>(
+        agentThreadKeys.detail(threadId)
+      )
+      if (stream.isLoading || currentThread?.status === "running") {
         await queue()
         return
-      }
-
-      try {
-        await queue()
-        return
-      } catch (error) {
-        if (!(error instanceof AgentsApiError) || error.status !== 409) {
-          throw error
-        }
       }
 
       const configurable: Record<string, unknown> = {}

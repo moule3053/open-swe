@@ -20,9 +20,11 @@ FROM python:3.12-slim-bookworm AS runtime
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl \
+    ca-certificates curl git \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 10001 appuser
+    && useradd --create-home --uid 10001 appuser \
+    && mkdir -p /workspace \
+    && chown appuser:appuser /workspace
 
 COPY --from=builder /app /app
 ENV PATH="/app/.venv/bin:$PATH" \

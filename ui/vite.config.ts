@@ -117,6 +117,33 @@ const SHIKI_LANGS = [
 ]
 
 const config = defineConfig({
+  build: {
+    sourcemap: false,
+    reportCompressedSize: false,
+    rollupOptions: {
+      maxParallelFileOps: 2,
+      cache: false,
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes("node_modules/shiki") ||
+            id.includes("node_modules/@shikijs")
+          ) {
+            return "shiki"
+          }
+          if (id.includes("node_modules/monaco-editor")) {
+            return "monaco"
+          }
+          if (
+            id.includes("node_modules/@pierre/diffs") ||
+            id.includes("node_modules/@pierre/trees")
+          ) {
+            return "pierre"
+          }
+        },
+      },
+    },
+  },
   optimizeDeps: {
     include: [
       "workbox-window",
@@ -135,7 +162,15 @@ const config = defineConfig({
   plugins: [
     mockHarnessProxy(),
     devtools(),
-    nitro(),
+    nitro({
+      minify: false,
+      sourcemap: false,
+      prerender: {
+        concurrency: 1,
+        crawlLinks: false,
+        routes: ["/"],
+      },
+    }),
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],
     }),
@@ -143,7 +178,7 @@ const config = defineConfig({
     tanstackStart({ spa: { enabled: true } }),
     VitePWA({
       injectRegister: false,
-      registerType: "prompt",
+      registerType: "autoUpdate",
       outDir: ".output/public",
       devOptions: {
         // Off in dev: the service worker precaches assets and defeats HMR (and
@@ -178,6 +213,9 @@ const config = defineConfig({
         ],
       },
       workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
         navigateFallback: "/_shell.html",
         navigateFallbackDenylist: [/^\/dashboard\/api\//, /^\/_serverFn\//],
         globPatterns: ["**/*.{js,css,png,svg,ico,webmanifest}"],

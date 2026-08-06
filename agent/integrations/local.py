@@ -3,7 +3,11 @@ import os
 from deepagents.backends import LocalShellBackend
 
 
-def create_local_sandbox(sandbox_id: str | None = None):
+def create_local_sandbox(
+    sandbox_id: str | None = None,
+    *,
+    root_dir: str | None = None,
+):
     """Create a local shell sandbox with no isolation.
 
     WARNING: This runs commands directly on the host machine with no sandboxing.
@@ -19,11 +23,11 @@ def create_local_sandbox(sandbox_id: str | None = None):
     Returns:
         LocalShellBackend instance implementing SandboxBackendProtocol.
     """
-    root_dir = os.getenv("LOCAL_SANDBOX_ROOT_DIR", os.getcwd())
-    os.makedirs(root_dir, exist_ok=True)
+    resolved_root = root_dir or os.getenv("LOCAL_SANDBOX_ROOT_DIR", os.getcwd())
+    os.makedirs(resolved_root, exist_ok=True)
 
     return LocalShellBackend(
-        root_dir=root_dir,
+        root_dir=resolved_root,
         virtual_mode=True,
         inherit_env=True,
     )

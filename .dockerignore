@@ -26,4 +26,17 @@ evals
 .mypy_cache
 .coverage
 htmlcov
+ui/core
+ui/.pnpm-store
+**/.pnpm-store
+.output
+**/.output
+!ui/.output/public
+!.output/public
+.nitro
+**/.nitro
+.tanstack
+**/.tanstack
+.vite
+**/.vite
 deploy/k8s

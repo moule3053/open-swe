@@ -3,7 +3,7 @@
 #   cp deploy/.env.example deploy/.env
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --build -d
 #
-# UI: http://localhost:3000/platform
+# UI: http://localhost:3005
 # API: http://localhost:8080
 
 name: ${COMPOSE_PROJECT_NAME:-openswe}
@@ -12,9 +12,12 @@ x-runtime: &runtime
   DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://openswe:openswe@postgres:5432/openswe}
   NATS_URL: ${NATS_URL:-nats://nats:4222}
   DEFAULT_MODEL: ${DEFAULT_MODEL:-openai:gpt-4o-mini}
-  DEFAULT_SANDBOX_PROVIDER: ${DEFAULT_SANDBOX_PROVIDER:-daytona}
+  DEFAULT_SANDBOX_PROVIDER: ${DEFAULT_SANDBOX_PROVIDER:-local}
   DEFAULT_ORG_ID: ${DEFAULT_ORG_ID:-00000000-0000-4000-8000-000000000001}
   DEFAULT_USER_ID: ${DEFAULT_USER_ID:-00000000-0000-4000-8000-000000000002}
+  GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+  GITHUB_APP_INSTALLATION_ID: ${GITHUB_APP_INSTALLATION_ID:-}
+  GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
 
 services:
   postgres:
@@ -68,7 +71,8 @@ services:
     image: openswe-platform:local
     restart: "no"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://openswe:openswe@postgres:5432/openswe}
+      <<: *runtime
+      BOOTSTRAP_DEV_DEFAULTS: "true"
     command: ["python", "-m", "openswe_platform.migrate"]
     depends_on:
       postgres:
@@ -157,6 +161,7 @@ services:
       HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-15}
       MAX_RUN_DURATION_SECONDS: ${MAX_RUN_DURATION_SECONDS:-14400}
       MAX_RUN_RETRIES: ${MAX_RUN_RETRIES:-3}
+      LOCAL_SANDBOX_ROOT_DIR: ${LOCAL_SANDBOX_ROOT_DIR:-/workspace}
       ALLOW_STUB_SANDBOXES: ${ALLOW_STUB_SANDBOXES:-true}
       DAYTONA_API_KEY: ${DAYTONA_API_KEY:-}
       AGENT_SANDBOX_KUBECONFIG: ${AGENT_SANDBOX_KUBECONFIG:-}
@@ -167,6 +172,8 @@ services:
       MCP_ALLOW_PRIVATE_NETWORKS: ${MCP_ALLOW_PRIVATE_NETWORKS:-false}
       MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-120}
     command: ["python", "-m", "openswe_platform.harness.worker"]
+    volumes:
+      - openswe_workspaces:/workspace
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -193,3 +200,4 @@ services:
 volumes:
   openswe_pg:
   openswe_nats:
+  openswe_workspaces:

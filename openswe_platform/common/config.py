@@ -79,6 +79,9 @@ class Settings:
     default_sandbox_provider: str = field(
         default_factory=lambda: _env("DEFAULT_SANDBOX_PROVIDER", "daytona") or "daytona"
     )
+    bootstrap_dev_defaults: bool = field(
+        default_factory=lambda: _env_bool("BOOTSTRAP_DEV_DEFAULTS", False)
+    )
     lease_ttl_seconds: int = field(default_factory=lambda: _env_int("LEASE_TTL_SECONDS", 60))
     heartbeat_interval_seconds: int = field(
         default_factory=lambda: _env_int("HEARTBEAT_INTERVAL_SECONDS", 15)

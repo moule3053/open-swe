@@ -50,6 +50,7 @@ class SandboxProvider(StrEnum):
     DAYTONA = "daytona"
     AGENT_SANDBOX = "agent_sandbox"
     OPENSANDBOX = "opensandbox"
+    LOCAL = "local"
 
 
 class ApprovalStatus(StrEnum):

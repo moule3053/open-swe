@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import { useStreamContext as useAgentThreadStream } from "@langchain/react"
 import { Map as MapIcon } from "lucide-react"
@@ -70,12 +70,50 @@ function visibleQueuedMessages(
   })
 }
 
+function reconciledMessages(
+  live: Array<Message>,
+  persisted: Array<Message>,
+  running: boolean
+): Array<Message> {
+  if (persisted.length === 0) return live
+  if (live.length === 0 || !running) return persisted
+
+  const liveIds = new Set(live.map((message) => message.id))
+  const liveTextKeys = new Set(
+    live
+      .map((message) => {
+        const text = messageText(message)
+        return text ? `${message.author}:${text}` : null
+      })
+      .filter((key): key is string => key !== null)
+  )
+  return [
+    ...live,
+    ...persisted.filter((message) => {
+      if (liveIds.has(message.id)) return false
+      const text = messageText(message)
+      return !text || !liveTextKeys.has(`${message.author}:${text}`)
+    }),
+  ]
+}
+
 // The stream lives at the `/agents` layout (one persistent provider that
 // survives the home → thread navigation), so this view only consumes it.
 export function AgentThreadView({ thread }: AgentThreadViewProps) {
   const sendMessage = useSubmitAgentMessage(thread.id)
   const stream = useAgentThreadStream()
+  const recoveredRevisionRef = useRef<string | null>(null)
   const isMobile = useIsMobile()
+
+  useEffect(() => {
+    if (thread.status === "running" || !stream.isLoading) return
+
+    const revision = `${thread.id}:${thread.updatedAt}`
+    if (recoveredRevisionRef.current === revision) return
+    recoveredRevisionRef.current = revision
+
+    void stream.disconnect().catch(() => undefined)
+  }, [stream, stream.isLoading, thread.id, thread.status, thread.updatedAt])
 
   const { models, defaultSelection } = useModelOptions()
   const threadSelection = useMemo<ModelSelection | null>(() => {
@@ -115,23 +153,27 @@ export function AgentThreadView({ thread }: AgentThreadViewProps) {
       stream.subagents,
       messageArrivalTimestamp
     )
-    if (live.length > 0) return live
-    // Optimistic transcript seeded by `AgentsHome` on thread creation (the
-    // only case where a fetched thread carries messages — `getThread` returns
-    // none). Bridges the brief gap before the SDK's optimistic `submit` echo
-    // lands in `stream.messages`.
-    if (thread.messages.length > 0) return thread.messages
-    return live
-  }, [stream.messages, stream.toolCalls, stream.subagents, thread.messages])
+    return reconciledMessages(
+      live,
+      thread.messages,
+      thread.status === "running"
+    )
+  }, [
+    stream.messages,
+    stream.toolCalls,
+    stream.subagents,
+    thread.messages,
+    thread.status,
+  ])
 
-  const isStreaming = thread.status === "running" || stream.isLoading
+  const isStreaming = thread.status === "running"
   const queuedMessages = useMemo(
     () => visibleQueuedMessages(thread.queuedMessages, baseMessages),
     [baseMessages, thread.queuedMessages]
   )
   const hasMessages = baseMessages.length > 0
   const hasConversation = hasMessages || queuedMessages.length > 0
-  const isThinking = stream.isLoading
+  const isThinking = isStreaming && stream.isLoading
   const settingUpSandbox = isThinking && baseMessages.length === 0
   // The transcript hydrates from the SDK (`GET …/state` → `stream.messages`).
   // Show a loading state during that one-time fetch instead of the empty state.

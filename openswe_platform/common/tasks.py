@@ -75,6 +75,7 @@ async def create_task(
     user_id: uuid.UUID,
     title: str | None,
     prompt: str | None,
+    prompt_message_id: uuid.UUID | None = None,
     repo: str | None = None,
     base_ref: str | None = "main",
     source: TaskSource | str = TaskSource.WEB_UI,
@@ -168,6 +169,7 @@ async def create_task(
     if prompt:
         session.add(
             Message(
+                message_id=prompt_message_id or uuid.uuid4(),
                 task_id=task.task_id,
                 role="user",
                 kind=MessageKind.USER_INPUT.value,
@@ -202,12 +204,14 @@ async def add_message(
     task_id: uuid.UUID,
     content: str,
     kind: MessageKind | str = MessageKind.USER_GUIDANCE,
+    message_id: uuid.UUID | None = None,
 ) -> Message:
     task = await _get_task(session, task_id)
     if is_terminal(task.status):
         raise ConflictError("task is terminal", error_code="task_terminal")
 
     msg = Message(
+        message_id=message_id or uuid.uuid4(),
         task_id=task_id,
         role="user",
         kind=MessageKind(kind).value,

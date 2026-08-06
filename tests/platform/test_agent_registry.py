@@ -82,7 +82,7 @@ async def test_real_backend_uses_deep_agent_runtime(monkeypatch):
     monkeypatch.setattr(
         agents,
         "_make_deep_agent_model",
-        lambda _model: FakeModel(responses=[AIMessage(content="deep agent complete")]),
+        lambda _model, **_kwargs: FakeModel(responses=[AIMessage(content="deep agent complete")]),
     )
     events = []
 
@@ -125,3 +125,36 @@ async def test_real_backend_uses_deep_agent_runtime(monkeypatch):
     assert result.final_message == "deep agent complete"
     assert result.checkpoint_blob["runtime"] == "deepagents"
     assert [event for event, _payload in events].count("model_started") == 1
+
+
+def test_runtime_instructions_include_repo_rules_and_plan_mode():
+    context = RunContext(
+        org_id="org",
+        task_id="task",
+        run_id="run",
+        thread_id="thread",
+        agent_type="coding",
+        repo="acme/example",
+        base_ref="main",
+        model="fake:model",
+        prompt="finish",
+        messages=[],
+        sandbox_provider="daytona",
+        sandbox_id="sandbox",
+        mcp_snapshot=[],
+        checkpoint=None,
+        metadata={
+            "custom_instructions": "Always run the contract tests.",
+            "plan_mode": True,
+        },
+    )
+
+    instructions = agents._runtime_instructions(context)
+
+    assert "Always run the contract tests." in instructions
+    assert "request plan approval before making changes" in instructions
+
+
+def test_model_effort_kwargs_match_provider_contracts():
+    assert agents._model_effort_kwargs("google_genai", "xhigh") == {"thinking_level": "high"}
+    assert agents._model_effort_kwargs("openai", "medium") == {"reasoning_effort": "medium"}

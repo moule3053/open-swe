@@ -114,9 +114,26 @@ export function useSidebarThreads(
 }
 
 export function useAgentThread(threadId: string) {
+  const queryClient = useQueryClient()
+
   return useQuery({
     queryKey: agentThreadKeys.detail(threadId),
-    queryFn: () => agentsApi.getThread(threadId),
+    queryFn: async () => {
+      const latest = await agentsApi.getThread(threadId)
+      const current = queryClient.getQueryData<AgentThread>(
+        agentThreadKeys.detail(threadId)
+      )
+      if (latest.status !== "running" || !current?.queuedMessages?.length) {
+        return latest
+      }
+      return { ...latest, queuedMessages: current.queuedMessages }
+    },
+    refetchInterval: (query) => {
+      const thread = query.state.data
+      return thread?.status === "running" || thread?.queuedMessages?.length
+        ? 2000
+        : false
+    },
     // Lets the optimistic detail seeded by `AgentsHome` survive until the
     // proxied run.start stamps the server-side thread; an immediate refetch
     // would 404 and bounce the route back to /agents.

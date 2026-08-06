@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
+import shlex
 import signal
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
 
+from agent.utils.github_app import get_github_app_installation_token
 from openswe_platform.common.config import get_settings
 from openswe_platform.common.db import dispose_engine, get_session_factory
-from openswe_platform.common.enums import ParkReason
+from openswe_platform.common.enums import ParkReason, TaskStatus
 from openswe_platform.common.messaging import SUBJECT_ENQUEUE_PREFIX, NatsBus
 from openswe_platform.common.models import Message, ProcessedMessage, SandboxRow, Task
+from openswe_platform.common.outbox import enqueue_task_work
 from openswe_platform.common.tasks import (
     append_event,
     claim_task,
@@ -30,9 +35,79 @@ from openswe_platform.common.tasks import (
 from openswe_platform.harness.agents import RunContext, get_agent
 from openswe_platform.harness.llm_client import make_llm_client
 from openswe_platform.harness.mcp_runtime import connect_mcp_servers
-from openswe_platform.harness.sandboxes import get_sandbox_provider
+from openswe_platform.harness.sandboxes import SandboxProviderBase, SandboxRef, get_sandbox_provider
 
 logger = logging.getLogger(__name__)
+
+
+def _message_input(message: Message) -> dict[str, str]:
+    return {
+        "role": message.role,
+        "content": message.content,
+        "id": str(message.message_id),
+    }
+
+
+def _repository_setup_command(repo: str, base_ref: str | None, token: str | None) -> str:
+    owner, separator, repo_name = repo.partition("/")
+    if not separator or not owner or not repo_name or "/" in repo_name:
+        raise ValueError("Repository must use owner/name form")
+
+    clone_url = f"https://github.com/{owner}/{repo_name}.git"
+    ssh_url = f"git@github.com:{owner}/{repo_name}.git"
+    branch = base_ref or "main"
+    clone_config = ""
+    configure_auth = "git config --unset-all http.https://github.com/.extraheader || true"
+    if token:
+        encoded = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+        header = f"Authorization: Basic {encoded}"
+        clone_config = f"-c {shlex.quote(f'http.extraHeader={header}')} "
+        configure_auth = "git config http.https://github.com/.extraheader " + shlex.quote(header)
+
+    q_clone_url = shlex.quote(clone_url)
+    q_ssh_url = shlex.quote(ssh_url)
+    q_branch = shlex.quote(branch)
+    return "\n".join(
+        [
+            "set -eu",
+            "export GIT_TERMINAL_PROMPT=0",
+            "if [ -d .git ]; then",
+            '  actual_origin="$(git remote get-url origin)"',
+            f'  if [ "$actual_origin" != {q_clone_url} ] && [ "$actual_origin" != {q_ssh_url} ]; then',
+            '    echo "Sandbox contains a different repository" >&2',
+            "    exit 42",
+            "  fi",
+            'elif [ -n "$(find . -mindepth 1 -maxdepth 1 -print -quit)" ]; then',
+            '  echo "Sandbox workspace is not empty" >&2',
+            "  exit 43",
+            "else",
+            f"  git {clone_config}clone --branch {q_branch} --single-branch {q_clone_url} .",
+            "fi",
+            configure_auth,
+            "git rev-parse --show-toplevel >/dev/null",
+        ]
+    )
+
+
+async def _prepare_task_repository(
+    provider: SandboxProviderBase,
+    sandbox_ref: SandboxRef,
+    *,
+    repo: str | None,
+    base_ref: str | None,
+) -> None:
+    if not repo:
+        return
+    _owner, _separator, repo_name = repo.partition("/")
+    token = await get_github_app_installation_token(
+        repositories=[repo_name] if repo_name else None,
+        log_errors=False,
+    )
+    command = _repository_setup_command(repo, base_ref, token)
+    result = await provider.exec(sandbox_ref, command, timeout=240)
+    if result.exit_code != 0:
+        detail = (result.stderr or result.stdout or "clone failed").strip().splitlines()[-1]
+        raise RuntimeError(f"Could not prepare {repo}: {detail[:300]}")
 
 
 class HarnessWorker:
@@ -163,7 +238,7 @@ class HarnessWorker:
                 .order_by(Message.seq)
             )
             message_rows = list(msg_result.scalars().all())
-            messages = [{"role": m.role, "content": m.content} for m in message_rows]
+            messages = [_message_input(message) for message in message_rows]
             last_message_seq = max(
                 [checkpoint_last_seq, *(int(m.seq) for m in message_rows)],
             )
@@ -194,6 +269,7 @@ class HarnessWorker:
                 "sandbox_id": existing_sb.sandbox_id if existing_sb else None,
                 "mcp_snapshot": list(task.mcp_snapshot or []),
                 "checkpoint": cp.blob if cp else None,
+                "metadata": dict(task.metadata_ or {}),
                 "last_message_seq": last_message_seq,
                 "cancel_requested": bool(task.cancel_requested_at),
             }
@@ -250,6 +326,48 @@ class HarnessWorker:
                 payload={"sandbox_id": sandbox_ref.sandbox_id, "provider": sandbox_ref.provider},
             )
             await session.commit()
+
+        try:
+            await _prepare_task_repository(
+                provider,
+                sandbox_ref,
+                repo=task_snapshot["repo"],
+                base_ref=task_snapshot["base_ref"],
+            )
+        except Exception as exc:
+            logger.warning("Repository setup failed for task %s: %s", task_id, exc)
+            async with factory() as session:
+                await append_event(
+                    session,
+                    task_id=task_id,
+                    run_id=run_id,
+                    event_type="repository_error",
+                    payload={"repo": task_snapshot["repo"], "error": str(exc)},
+                )
+                await complete_task(
+                    session,
+                    task_id=task_id,
+                    run_id=run_id,
+                    success=False,
+                    error_code="repository_setup_failed",
+                    error_message=str(exc),
+                )
+                await session.commit()
+            return
+
+        if task_snapshot["repo"]:
+            async with factory() as session:
+                await append_event(
+                    session,
+                    task_id=task_id,
+                    run_id=run_id,
+                    event_type="repository_prepared",
+                    payload={
+                        "repo": task_snapshot["repo"],
+                        "base_ref": task_snapshot["base_ref"],
+                    },
+                )
+                await session.commit()
 
         # MCP
         mcp_sessions = []
@@ -323,6 +441,7 @@ class HarnessWorker:
             sandbox_id=sandbox_ref.sandbox_id,
             mcp_snapshot=task_snapshot["mcp_snapshot"],
             checkpoint=task_snapshot["checkpoint"],
+            metadata=task_snapshot["metadata"],
             last_message_seq=task_snapshot["last_message_seq"],
             cancel_requested=task_snapshot["cancel_requested"],
         )
@@ -383,7 +502,7 @@ class HarnessWorker:
                 if rows:
                     ctx.last_message_seq = max(int(row.seq) for row in rows)
                 await session.commit()
-                return [{"role": row.role, "content": row.content} for row in rows]
+                return [_message_input(row) for row in rows]
 
         heartbeat_stop = asyncio.Event()
 
@@ -460,6 +579,16 @@ class HarnessWorker:
                     run_id=run_id,
                     blob={**result.checkpoint_blob, "last_message_seq": ctx.last_message_seq},
                 )
+            task_result = await session.execute(
+                select(Task).where(Task.task_id == task_id).with_for_update()
+            )
+            task_row = task_result.scalar_one()
+            pending_result = await session.execute(
+                select(Message.message_id)
+                .where(Message.task_id == task_id, Message.seq > ctx.last_message_seq)
+                .limit(1)
+            )
+            has_trailing_message = pending_result.scalar_one_or_none() is not None
             if result.park:
                 await park_task(
                     session,
@@ -477,6 +606,24 @@ class HarnessWorker:
                     error_code=result.error_code,
                     error_message=None if result.success else result.final_message,
                 )
+                if has_trailing_message and not task_row.cancel_requested_at:
+                    task_row.status = TaskStatus.QUEUED.value
+                    task_row.park_reason = None
+                    task_row.updated_at = datetime.now(UTC)
+                    await append_event(
+                        session,
+                        task_id=task_id,
+                        run_id=run_id,
+                        event_type="trailing_message_requeued",
+                        payload={"last_message_seq": ctx.last_message_seq},
+                    )
+                    await enqueue_task_work(
+                        session,
+                        org_id=task_row.org_id,
+                        task_id=task_id,
+                        agent_type=task_row.agent_type,
+                        reason="trailing_message",
+                    )
             await session.commit()
 
 
