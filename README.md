@@ -426,6 +426,19 @@ If you use a different LiteLLM release or logical model name, update `deploy/k8s
 
 The RBAC and NetworkPolicy manifests are separate because they target `alephat-sandboxes`, while the Kustomize base applies its namespace transformer to the `alephat` platform resources.
 
+If upgrading an earlier version of this fork that used `emptyDir`, first stop task submission, let
+queued/running tasks finish, and export PostgreSQL before the rollout. The old NATS stream was
+ephemeral, so no queued work should remain when NATS restarts:
+
+```bash
+kubectl -n "$PLATFORM_NAMESPACE" exec openswe-postgresql-0 -- \
+  sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --clean --if-exists -U openswe -d openswe' \
+  > openswe-before-pvc.sql
+```
+
+Keep that backup outside the cluster. After applying, verify the PVCs are bound and restore the dump
+if this was an upgrade; a fresh installation does not need a restore.
+
 ```bash
 kubectl apply -f deploy/k8s/agent-sandbox-rbac.yaml
 kubectl apply -f deploy/k8s/agent-sandbox-networkpolicy.yaml
@@ -438,6 +451,12 @@ kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-webhook --tim
 kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-ui --timeout=10m
 kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-harness --timeout=10m
 
+if [ -f openswe-before-pvc.sql ]; then
+  kubectl -n "$PLATFORM_NAMESPACE" exec -i openswe-postgresql-0 -- \
+    sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U openswe -d openswe' \
+    < openswe-before-pvc.sql
+fi
+
 kubectl apply -f deploy/k8s/harness-keda.yaml
 kubectl -n "$PLATFORM_NAMESPACE" get scaledobject openswe-harness
 kubectl -n "$PLATFORM_NAMESPACE" get hpa
@@ -449,10 +468,19 @@ Check all components:
 
 ```bash
 kubectl -n "$PLATFORM_NAMESPACE" get pods,svc
+kubectl -n "$PLATFORM_NAMESPACE" get pvc
 kubectl -n "$SANDBOX_NAMESPACE" get sandboxtemplate
 kubectl -n keda get pods
 kubectl -n "$PLATFORM_NAMESPACE" logs deployment/openswe-harness --tail=100
 ```
+
+The checked-in Open SWE PostgreSQL and NATS manifests each request a `20Gi`
+`standard-rwo` GKE persistent disk. LiteLLM's separate PostgreSQL instance requests another `20Gi`
+disk through its Helm values. PostgreSQL data and NATS JetStream state therefore survive Pod
+restarts and rescheduling. Set a different storage class or capacity in
+`deploy/k8s/postgresql.yaml`, `deploy/k8s/nats.yaml`, and `deploy/k8s/litellm-values.yaml` before the
+first apply when required. PVC capacity can be expanded later when the selected StorageClass allows
+expansion, but it cannot be shrunk.
 
 ### 9. Publish Open SWE with Traefik, HTTPS, and DNS
 
@@ -591,11 +619,19 @@ The first command must print `kata-qemu`. A successful task should show model ev
 
 The checked-in manifests are a reproducible standalone starting point, not an HA production topology:
 
-- `deploy/k8s/postgresql.yaml` gives Open SWE a dedicated PostgreSQL StatefulSet but currently uses `emptyDir`; replace it with a PVC or Cloud SQL before storing production data.
+- `deploy/k8s/postgresql.yaml` gives Open SWE a dedicated PostgreSQL StatefulSet backed by a GKE
+  persistent disk. Configure scheduled backups and use Cloud SQL for regional HA, point-in-time
+  recovery, and managed failover.
+- `deploy/k8s/nats.yaml` persists JetStream state on a GKE disk but remains a single NATS server.
+  Use the official NATS Helm chart with a three-node JetStream cluster and disruption budgets when
+  queue availability must survive a node or zone failure.
 - The LiteLLM chart's standalone PostgreSQL is also a getting-started option. Use a separate managed database, backups, and Redis for multi-replica LiteLLM.
 - Back up Traefik's ACME volume or move certificate lifecycle to cert-manager before making ingress highly available.
 - Restrict GitHub App repository access, configure NetworkPolicies and egress controls, set ResourceQuotas in the sandbox namespace, and enable GKE node autoscaling for the Kata pool.
 - Pin container, Helm chart, Agent Sandbox, and Kata versions and test upgrades in a non-production cluster.
+
+Deleting the namespace or any PVC can delete its underlying disk, depending on the StorageClass
+reclaim policy. Take a database backup and a JetStream snapshot before destructive maintenance.
 
 Delete the cluster when it is no longer needed:
 

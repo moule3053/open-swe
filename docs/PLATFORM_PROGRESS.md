@@ -31,8 +31,9 @@ Status against [`SERVICE_CONTRACTS.md`](./SERVICE_CONTRACTS.md), updated 2026-07
 ## Verification completed
 
 - `ruff check` and format check for the platform Python packages and tests.
-- 44 platform unit tests, including retry, SSRF, MCP invocation, checkpoint/guidance replay, and a
-  compiled Deep Agent run against an initialized backend.
+- Platform unit tests cover retry, SSRF, MCP invocation, checkpoint/guidance replay, persistent
+  Kubernetes storage, and compiled Deep Agent runs against initialized Daytona and Agent Sandbox
+  backends.
 - UI TypeScript type-check and ESLint for the new route/client.
 - UI production compilation reached asset/server generation; the final local prerender listener is
   blocked by this workspace's localhost permission boundary.
@@ -40,7 +41,8 @@ Status against [`SERVICE_CONTRACTS.md`](./SERVICE_CONTRACTS.md), updated 2026-07
 
 ## External adapters still required
 
-- `agent_sandbox` needs the target cluster's Sandbox CR adapter and RBAC.
+- `agent_sandbox` is implemented for the upstream Python runtime service; the target cluster still
+  needs the Sandbox CRDs/controller, runtime template, RBAC, and network policy from `deploy/k8s`.
 - `opensandbox` needs the deployment's chosen OpenSandbox API/SDK contract.
 - End-to-end provider runs require real LLM and sandbox credentials. Production stubs are disabled,
   so missing adapters fail visibly instead of reporting fake command success.

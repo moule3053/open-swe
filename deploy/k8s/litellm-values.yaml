@@ -48,6 +48,11 @@ postgresql:
     secretKeys:
       adminPasswordKey: postgres-password
       userPasswordKey: password
+  primary:
+    persistence:
+      enabled: true
+      storageClass: standard-rwo
+      size: 20Gi
 
 redis:
   enabled: false

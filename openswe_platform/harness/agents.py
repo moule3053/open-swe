@@ -500,13 +500,23 @@ class CodingAgentRunner:
             if item.langchain_tool is not None
         ]
         middleware = HarnessBoundaryMiddleware(ctx, on_step, on_boundary)
-        repository_prompt = (
-            "The selected repository is already checked out at the sandbox root; all "
-            "filesystem tools and shell commands start in that repository. Read AGENTS.md "
-            "first when it exists and do not inspect any other repository. "
-            if ctx.repo
-            else "No repository was selected, so do not assume the sandbox contains Open SWE. "
-        )
+        workspace = getattr(sandbox_ref.handle, "workspace", None)
+        if ctx.repo and isinstance(workspace, str):
+            repository_prompt = (
+                f"The selected repository is already checked out at {workspace}. Shell commands "
+                f"start there, and filesystem tool paths are confined there. Read {workspace}/"
+                "AGENTS.md first when it exists and do not inspect outside that workspace. "
+            )
+        elif ctx.repo:
+            repository_prompt = (
+                "The selected repository is already checked out at the sandbox root; all "
+                "filesystem tools and shell commands start in that repository. Read AGENTS.md "
+                "first when it exists and do not inspect any other repository. "
+            )
+        else:
+            repository_prompt = (
+                "No repository was selected, so do not assume the sandbox contains Open SWE. "
+            )
         system_prompt = (
             "You are Open SWE, a coding agent running in an isolated sandbox. "
             f"Repository: {ctx.repo or 'none selected'}. Base ref: {ctx.base_ref or 'main'}. "
