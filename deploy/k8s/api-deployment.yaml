@@ -17,8 +17,8 @@ spec:
     spec:
       initContainers:
         - name: migrate
-          image: openswe-platform:latest
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          imagePullPolicy: Always
           command: ["python", "-m", "openswe_platform.migrate"]
           env:
             - name: DATABASE_URL
@@ -26,10 +26,30 @@ spec:
                 configMapKeyRef:
                   name: openswe-config
                   key: DATABASE_URL
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-postgres
+                  key: password
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_HOST
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_NAME
+            - name: DATABASE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_USER
       containers:
         - name: api
-          image: openswe-platform:latest
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          imagePullPolicy: Always
           command: ["uvicorn", "openswe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
           ports:
             - containerPort: 8080
@@ -38,6 +58,11 @@ spec:
             - configMapRef:
                 name: openswe-config
           env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-postgres
+                  key: password
             - name: SERVICE_NAME
               value: api
             - name: PLATFORM_API_TOKEN
@@ -52,12 +77,26 @@ spec:
                   name: openswe-secrets
                   key: PLATFORM_JWT_SECRET
                   optional: true
+            - name: GITHUB_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-oauth
+                  key: GITHUB_APP_CLIENT_ID
+            - name: GITHUB_APP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-oauth
+                  key: GITHUB_APP_CLIENT_SECRET
+            - name: DASHBOARD_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-oauth
+                  key: DASHBOARD_JWT_SECRET
             - name: TOKEN_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: openswe-oauth
                   key: TOKEN_ENCRYPTION_KEY
-                  optional: true
           readinessProbe:
             httpGet:
               path: /readyz

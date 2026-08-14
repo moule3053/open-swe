@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from openswe_platform.api.routes_dashboard import router as dashboard_router
 from openswe_platform.api.routes_mcp import router as mcp_router
 from openswe_platform.api.routes_meta import router as meta_router
+from openswe_platform.api.routes_oauth import router as oauth_router
 from openswe_platform.api.routes_tasks import router as tasks_router
 from openswe_platform.common.config import get_settings
 from openswe_platform.common.db import dispose_engine, get_session_factory
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
     app.include_router(meta_router)
     app.include_router(tasks_router)
     app.include_router(mcp_router)
+    app.include_router(oauth_router)
     app.include_router(dashboard_router)
     return app
 

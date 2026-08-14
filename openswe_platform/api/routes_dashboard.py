@@ -318,17 +318,18 @@ def _profile_response(
 @router.get("/me")
 async def get_me(auth: AuthContext = Depends(get_auth)) -> dict[str, Any]:
     return {
-        "login": "moule3053",
-        "email": "14330171+moule3053@users.noreply.github.com",
-        "avatar_url": "https://github.com/moule3053.png",
-        "is_admin": True,
+        "login": auth.github_login or "moule3053",
+        "email": auth.email or "14330171+moule3053@users.noreply.github.com",
+        "avatar_url": auth.avatar_url or "https://github.com/moule3053.png",
+        "is_admin": auth.role == "admin",
         "slack_oauth_enabled": False,
     }
 
 
 @router.get("/my-mapping")
-async def get_my_mapping() -> dict[str, Any]:
-    return {"login": "moule3053", "github_login": "moule3053"}
+async def get_my_mapping(auth: AuthContext = Depends(get_auth)) -> dict[str, Any]:
+    login = auth.github_login or "moule3053"
+    return {"login": login, "github_login": login}
 
 
 @router.get("/repos")
@@ -1163,6 +1164,8 @@ async def post_thread_commands(
         "agent_effort": configurable.get("agent_effort") or profile_values.get("reasoning_effort"),
         "plan_mode": configurable.get("plan_mode") is True,
     }
+    if auth.github_login:
+        run_metadata["github_login"] = auth.github_login
     if isinstance(instructions, str) and instructions.strip():
         run_metadata["custom_instructions"] = instructions.strip()
     if task is None:

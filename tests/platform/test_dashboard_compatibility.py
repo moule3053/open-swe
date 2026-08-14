@@ -331,7 +331,7 @@ def test_message_id_survives_worker_context_and_checkpoint():
 
 @pytest.mark.asyncio
 async def test_get_me():
-    auth = AuthContext(org_id=uuid.uuid4(), user_id=uuid.uuid4())
+    auth = AuthContext(org_id=uuid.uuid4(), user_id=uuid.uuid4(), role="admin")
     res = await get_me(auth)
     assert res["login"] == "moule3053"
     assert res["is_admin"] is True

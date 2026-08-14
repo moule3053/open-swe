@@ -17,10 +17,11 @@ spec:
       labels:
         app: openswe-harness
     spec:
+      serviceAccountName: openswe-harness
       initContainers:
         - name: migrate
-          image: openswe-platform:latest
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          imagePullPolicy: Always
           command: ["python", "-m", "openswe_platform.migrate"]
           env:
             - name: DATABASE_URL
@@ -28,15 +29,40 @@ spec:
                 configMapKeyRef:
                   name: openswe-config
                   key: DATABASE_URL
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-postgres
+                  key: password
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_HOST
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_NAME
+            - name: DATABASE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_USER
       containers:
         - name: harness
-          image: openswe-platform:latest
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          imagePullPolicy: Always
           command: ["python", "-m", "openswe_platform.harness.worker"]
           envFrom:
             - configMapRef:
                 name: openswe-config
           env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-postgres
+                  key: password
             - name: SERVICE_NAME
               value: harness
             - name: WORKER_ID
@@ -76,15 +102,14 @@ spec:
             - name: LITELLM_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
-                  key: LITELLM_API_KEY
-                  optional: true
+                  name: litellm-secrets
+                  key: masterkey
+                  optional: false
             - name: TOKEN_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: openswe-oauth
                   key: TOKEN_ENCRYPTION_KEY
-                  optional: true
             - name: OPENSANDBOX_BASE_URL
               valueFrom:
                 secretKeyRef:

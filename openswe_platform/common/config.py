@@ -28,17 +28,22 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _database_url() -> str:
+    configured = _env("DATABASE_URL")
+    if configured:
+        return configured
+    host = _env("DATABASE_HOST", "localhost") or "localhost"
+    port = _env("DATABASE_PORT", "5432") or "5432"
+    name = _env("DATABASE_NAME", "postgres") or "postgres"
+    user = _env("DATABASE_USER", "postgres") or "postgres"
+    password = _env("DATABASE_PASSWORD")
+    auth = f"{user}:{password}@" if password else f"{user}@"
+    return f"postgresql+asyncpg://{auth}{host}:{port}/{name}"
+
+
 @dataclass(frozen=True)
 class Settings:
-    database_url: str = field(
-        default_factory=lambda: (
-            _env(
-                "DATABASE_URL",
-                "postgresql+asyncpg://openswe:openswe@localhost:5432/openswe",
-            )
-            or ""
-        )
-    )
+    database_url: str = field(default_factory=_database_url)
     nats_url: str = field(default_factory=lambda: _env("NATS_URL", "nats://localhost:4222") or "")
     token_encryption_key: str | None = field(default_factory=lambda: _env("TOKEN_ENCRYPTION_KEY"))
     # LLM routing: auto | litellm | direct (LiteLLM is optional)
@@ -134,6 +139,17 @@ class Settings:
     )
     agent_sandbox_kubeconfig: str | None = field(
         default_factory=lambda: _env("AGENT_SANDBOX_KUBECONFIG")
+    )
+    agent_sandbox_namespace: str = field(
+        default_factory=lambda: _env("AGENT_SANDBOX_NAMESPACE", "agent-sandboxes")
+        or "agent-sandboxes"
+    )
+    agent_sandbox_template: str = field(
+        default_factory=lambda: _env("AGENT_SANDBOX_TEMPLATE", "python-sandbox-warmpool")
+        or "python-sandbox-warmpool"
+    )
+    agent_sandbox_api_timeout_seconds: int = field(
+        default_factory=lambda: _env_int("AGENT_SANDBOX_API_TIMEOUT_SECONDS", 30)
     )
     opensandbox_base_url: str | None = field(default_factory=lambda: _env("OPENSANDBOX_BASE_URL"))
     opensandbox_api_key: str | None = field(default_factory=lambda: _env("OPENSANDBOX_API_KEY"))

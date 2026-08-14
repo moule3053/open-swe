@@ -13,8 +13,8 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
-          image: openswe-platform:latest
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          imagePullPolicy: Always
           command: ["python", "-m", "openswe_platform.migrate"]
           env:
             - name: DATABASE_URL
@@ -22,3 +22,23 @@ spec:
                 configMapKeyRef:
                   name: openswe-config
                   key: DATABASE_URL
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-postgres
+                  key: password
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_HOST
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_NAME
+            - name: DATABASE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: openswe-config
+                  key: DATABASE_USER

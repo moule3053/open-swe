@@ -1,0 +1,8 @@
+.git/
+.venv/
+**/__pycache__/
+ui/.pnpm-store/
+ui/core
+node_modules/
+*.pyc
+*.log

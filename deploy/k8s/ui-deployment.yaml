@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: ui
-          image: openswe-ui:latest
-          imagePullPolicy: IfNotPresent
+          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-ui:latest
+          imagePullPolicy: Always
           env:
             - name: API_UPSTREAM
               value: openswe-api:80

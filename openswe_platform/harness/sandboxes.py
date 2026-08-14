@@ -5,11 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import ssl
 import tempfile
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
+
+import httpx
 
 from openswe_platform.common.config import get_settings
 from openswe_platform.common.enums import SandboxProvider
@@ -125,45 +128,183 @@ class DaytonaProvider(SandboxProviderBase):
 
 
 class AgentSandboxProvider(SandboxProviderBase):
-    """kubernetes-sigs/agent-sandbox integration (stub-capable)."""
+    """Kubernetes-sigs/agent-sandbox provider using in-cluster Kubernetes REST."""
 
     name = SandboxProvider.AGENT_SANDBOX.value
 
-    async def create(self, *, task_id: str, metadata: dict[str, Any] | None = None) -> SandboxRef:
-        if not get_settings().allow_stub_sandboxes:
-            raise RuntimeError(
-                "agent_sandbox needs a cluster adapter; set ALLOW_STUB_SANDBOXES=true only for local UI testing"
-            )
-        namespace = os.environ.get("AGENT_SANDBOX_NAMESPACE", "agent-sandboxes")
-        sid = f"asb-{task_id[:8]}-{uuid.uuid4().hex[:8]}"
-        logger.info("agent_sandbox create %s in ns %s", sid, namespace)
-        return SandboxRef(
-            provider=self.name,
-            sandbox_id=sid,
-            metadata={"namespace": namespace, "stub": True, **(metadata or {})},
+    def _kube_config(self) -> tuple[str, dict[str, str], ssl.SSLContext]:
+        token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        if not os.path.exists(token_path):
+            raise RuntimeError("agent_sandbox requires an in-cluster service account")
+        with open(token_path, encoding="utf-8") as token_file:
+            token = token_file.read().strip()
+        host = os.environ.get("KUBERNETES_SERVICE_HOST")
+        port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
+        if not host:
+            raise RuntimeError("KUBERNETES_SERVICE_HOST is not set")
+        return (
+            f"https://{host}:{port}",
+            {"Authorization": f"Bearer {token}"},
+            ssl.create_default_context(cafile=ca_path),
         )
 
-    async def connect(self, sandbox_id: str) -> SandboxRef:
-        if not get_settings().allow_stub_sandboxes:
-            raise RuntimeError("agent_sandbox reconnect is unavailable without a cluster adapter")
-        namespace = os.environ.get("AGENT_SANDBOX_NAMESPACE", "agent-sandboxes")
+    async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
+        base, headers, verify = self._kube_config()
+        request_headers = {**headers, **(kwargs.pop("headers", {}) or {})}
+        settings = get_settings()
+        async with httpx.AsyncClient(
+            base_url=base,
+            headers=request_headers,
+            verify=verify,
+            timeout=settings.agent_sandbox_api_timeout_seconds,
+        ) as client:
+            response = await client.request(method, path, **kwargs)
+        if response.is_error:
+            raise RuntimeError(
+                f"Kubernetes API {method} {path} failed ({response.status_code}): {response.text[:500]}"
+            )
+        return response.json() if response.content else {}
+
+    @staticmethod
+    def _claim_path(namespace: str, name: str) -> str:
+        return f"/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/{namespace}/sandboxclaims/{name}"
+
+    @staticmethod
+    def _sandbox_path(namespace: str, name: str) -> str:
+        return f"/apis/agents.x-k8s.io/v1beta1/namespaces/{namespace}/sandboxes/{name}"
+
+    @staticmethod
+    def _template_path(namespace: str, name: str) -> str:
+        return f"/apis/extensions.agents.x-k8s.io/v1beta1/namespaces/{namespace}/sandboxtemplates/{name}"
+
+    @staticmethod
+    def _service_path(namespace: str, name: str) -> str:
+        return f"/api/v1/namespaces/{namespace}/services/{name}"
+
+    async def _resolve_ref(self, ref: SandboxRef) -> SandboxRef:
+        settings = get_settings()
+        try:
+            data = await self._request("GET", self._sandbox_path(settings.agent_sandbox_namespace, ref.sandbox_id))
+            sandbox_name = ref.sandbox_id
+        except RuntimeError:
+            claim = await self._request("GET", self._claim_path(settings.agent_sandbox_namespace, ref.sandbox_id))
+            sandbox = (claim.get("status") or {}).get("sandbox") or {}
+            sandbox_name = sandbox.get("name") or sandbox.get("sandboxName")
+            if not sandbox_name:
+                raise RuntimeError(
+                    f"SandboxClaim {ref.sandbox_id} has no assigned sandbox"
+                ) from None
+            data = await self._request(
+                "GET", self._sandbox_path(settings.agent_sandbox_namespace, str(sandbox_name))
+            )
+        status = data.get("status") or {}
+        ready = next((c for c in status.get("conditions") or [] if c.get("type") == "Ready"), None)
+        if not ready or ready.get("status") != "True":
+            raise RuntimeError(f"Sandbox {sandbox_name} is not ready: {ready or status}")
+        host = status.get("serviceFQDN")
+        if not host:
+            selector = status.get("selector") or ""
+            key, separator, value = selector.partition("=")
+            if not separator:
+                raise RuntimeError(f"Sandbox {sandbox_name} has no service FQDN or selector")
+            service_name = f"{ref.sandbox_id[:50]}".rstrip("-")
+            service_body = {
+                "apiVersion": "v1",
+                "kind": "Service",
+                "metadata": {"name": service_name, "labels": {"app.kubernetes.io/part-of": "open-swe"}},
+                "spec": {
+                    "selector": {key: value},
+                    "ports": [{"name": "toolbox", "port": 8888, "targetPort": "toolbox"}],
+                },
+            }
+            try:
+                await self._request("POST", f"/api/v1/namespaces/{settings.agent_sandbox_namespace}/services", json=service_body)
+            except RuntimeError as exc:
+                if "(409)" not in str(exc):
+                    raise
+            host = f"{service_name}.{settings.agent_sandbox_namespace}.svc.cluster.local"
         return SandboxRef(
             provider=self.name,
-            sandbox_id=sandbox_id,
-            metadata={"namespace": namespace, "stub": True},
+            sandbox_id=ref.sandbox_id,
+            metadata={**ref.metadata, "sandbox_name": str(sandbox_name), "base_url": f"http://{host}:8888"},
+        )
+
+    async def create(self, *, task_id: str, metadata: dict[str, Any] | None = None) -> SandboxRef:
+        settings = get_settings()
+        sid = f"asb-{task_id[:8]}-{uuid.uuid4().hex[:8]}"
+        body = {
+            "apiVersion": "extensions.agents.x-k8s.io/v1beta1",
+            "kind": "SandboxClaim",
+            "metadata": {"name": sid, "labels": {"app.kubernetes.io/part-of": "open-swe"}},
+            "spec": {
+                "warmPoolRef": {"name": settings.agent_sandbox_template},
+                "lifecycle": {"shutdownPolicy": "Delete"},
+            },
+        }
+        template = await self._request(
+            "GET", self._template_path(settings.agent_sandbox_namespace, settings.agent_sandbox_template)
+        )
+        body = {
+            "apiVersion": "agents.x-k8s.io/v1beta1",
+            "kind": "Sandbox",
+            "metadata": {"name": sid, "labels": {"app.kubernetes.io/part-of": "open-swe"}},
+            "spec": {
+                "operatingMode": "Running",
+                "podTemplate": (template.get("spec") or {}).get("podTemplate") or {},
+                "service": True,
+                "shutdownPolicy": "Delete",
+            },
+        }
+        await self._request(
+            "POST",
+            f"/apis/agents.x-k8s.io/v1beta1/namespaces/{settings.agent_sandbox_namespace}/sandboxes",
+            json=body,
+        )
+        ref = SandboxRef(provider=self.name, sandbox_id=sid, metadata={"namespace": settings.agent_sandbox_namespace, **(metadata or {})})
+        deadline = asyncio.get_running_loop().time() + 180
+        while asyncio.get_running_loop().time() < deadline:
+            try:
+                return await self._resolve_ref(ref)
+            except RuntimeError:
+                await asyncio.sleep(2)
+        raise TimeoutError(f"Timed out waiting for agent-sandbox claim {sid}")
+
+    async def connect(self, sandbox_id: str) -> SandboxRef:
+        settings = get_settings()
+        return await self._resolve_ref(
+            SandboxRef(provider=self.name, sandbox_id=sandbox_id, metadata={"namespace": settings.agent_sandbox_namespace})
         )
 
     async def exec(self, ref: SandboxRef, command: str, timeout: int = 120) -> ExecResult:
-        return ExecResult(
-            exit_code=0,
-            stdout=f"[agent_sandbox:{ref.sandbox_id}] ran: {command}\n",
-        )
+        if "base_url" not in ref.metadata:
+            ref = await self._resolve_ref(ref)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(f"{ref.metadata['base_url']}/execute", json={"command": command})
+        response.raise_for_status()
+        result = response.json()
+        return ExecResult(int(result.get("exit_code", 1)), str(result.get("stdout", "")), str(result.get("stderr", "")))
 
     async def stop(self, ref: SandboxRef) -> None:
         logger.info("agent_sandbox stop %s", ref.sandbox_id)
 
     async def delete(self, ref: SandboxRef) -> None:
-        logger.info("agent_sandbox delete %s", ref.sandbox_id)
+        settings = get_settings()
+        try:
+            await self._request("DELETE", self._sandbox_path(settings.agent_sandbox_namespace, ref.sandbox_id))
+        except RuntimeError as exc:
+            if "(404)" not in str(exc):
+                try:
+                    await self._request("DELETE", self._claim_path(settings.agent_sandbox_namespace, ref.sandbox_id))
+                except RuntimeError as claim_exc:
+                    if "(404)" not in str(claim_exc):
+                        raise
+        service_name = ref.sandbox_id[:50].rstrip("-")
+        try:
+            await self._request("DELETE", self._service_path(settings.agent_sandbox_namespace, service_name))
+        except RuntimeError as exc:
+            if "(404)" not in str(exc):
+                raise
 
 
 class OpenSandboxProvider(SandboxProviderBase):
