@@ -178,11 +178,21 @@ export SANDBOX_NAMESPACE="alephat-sandboxes"
 export PLATFORM_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/openswe-platform:latest"
 export UI_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/openswe-ui:latest"
 
+# Required when publishing the dashboard with Traefik in step 9.
+export DNS_DOMAIN="example.com"
+export DNS_ZONE="example-com"
+export OPENSWE_HOST="openswe.example.com"
+export OPENSWE_ORIGIN="https://${OPENSWE_HOST}"
+export ACME_EMAIL="admin@example.com"
+export TRAEFIK_IP_NAME="openswe-traefik"
+
 gcloud config set project "$PROJECT_ID"
 gcloud services enable \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
-  container.googleapis.com
+  compute.googleapis.com \
+  container.googleapis.com \
+  dns.googleapis.com
 ```
 
 If you use Gemini through Vertex AI instead of a Gemini API key, also enable `aiplatform.googleapis.com` and configure Workload Identity for LiteLLM. The simpler Google AI Studio API-key path is shown below.
@@ -311,14 +321,43 @@ kubectl -n "$PLATFORM_NAMESPACE" run litellm-smoke \
 
 ### 6. Create the GitHub App and Kubernetes secrets
 
-Create and install a GitHub App by following [the GitHub App permissions guide](docs/INSTALLATION.md#3-create-a-github-app). For the port-forwarded dashboard, configure:
+Open **GitHub Settings → Developer settings → GitHub Apps → New GitHub App**. The same GitHub App provides dashboard OAuth and short-lived installation tokens for cloning and modifying repositories.
 
-- Homepage URL: `http://127.0.0.1:18080`
-- Callback URL: `http://127.0.0.1:18080/dashboard/api/auth/callback`
-- Repository permissions: Contents, pull requests, issues, checks, and workflows as described in the linked guide
-- Webhook secret: a random value from `openssl rand -hex 32`
+Under **Basic information**, configure:
 
-Collect the App ID, client ID, client secret, generated private-key `.pem` file, and installation ID. Install the app on every repository that Open SWE may clone or modify.
+Replace `openswe.example.com` below with the value of `OPENSWE_HOST` from step 1.
+
+- Homepage URL: use `http://127.0.0.1:18080` for port forwarding or `https://openswe.example.com` for production.
+- Callback URLs: add every origin you will use. For this guide, add both:
+  - `http://127.0.0.1:18080/dashboard/api/auth/callback`
+  - `https://openswe.example.com/dashboard/api/auth/callback`
+- Under **Identifying and authorizing users**, enable **Request user authorization (OAuth) during installation** once one callback is reachable. If you create and install the app before deploying the UI, save the callback URLs now and enable this option after step 9; the dashboard's Sign in button can also start the OAuth web flow explicitly and supplies the matching `redirect_uri`.
+- Leave Device Flow disabled; the dashboard uses GitHub's web application flow.
+- Enable webhooks and set the production Webhook URL to `https://openswe.example.com/hooks/github`. For local webhook development, use a tunnel to the webhook service; a loopback URL is not reachable by GitHub.
+- Generate a webhook secret with `openssl rand -hex 32` and enter the same value in the `openswe-secrets` Secret below.
+
+Set these repository permissions:
+
+- Contents: Read & write
+- Pull requests: Read & write
+- Issues: Read & write
+- Checks: Read & write
+- Workflows: Read & write
+- Metadata: Read-only
+- Actions: Read-only when the agent should inspect GitHub Actions logs
+- Organization members: Read-only when `ALLOWED_GITHUB_ORGS` is used to gate login
+
+Subscribe to `Issue comment`, `Pull request review`, `Pull request review comment`, `Check run`, `Check suite`, and `Workflow run`. The [detailed GitHub App permissions guide](docs/INSTALLATION.md#3-create-a-github-app) explains optional status events and why each permission is needed.
+
+After creating the app:
+
+1. Copy the App ID and OAuth Client ID.
+2. Generate an OAuth client secret.
+3. Generate and download a private-key `.pem` file.
+4. Select **Install App**, choose the account or organization, and grant access only to the repositories Open SWE should operate on.
+5. Copy the numeric installation ID from the installation page URL.
+
+`GITHUB_APP_CLIENT_ID` and `GITHUB_APP_CLIENT_SECRET` are used for browser OAuth. `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, and `GITHUB_APP_INSTALLATION_ID` are used server-side to mint installation tokens. The private key and client secret must never be exposed to the browser or sandbox.
 
 ```bash
 export GITHUB_APP_ID="123456"
@@ -415,15 +454,112 @@ kubectl -n keda get pods
 kubectl -n "$PLATFORM_NAMESPACE" logs deployment/openswe-harness --tail=100
 ```
 
-### 9. Open the UI and run an end-to-end coding task
+### 9. Publish Open SWE with Traefik, HTTPS, and DNS
 
-Start the port forward and keep it running:
+For production, reserve a regional external IPv4 address in the same region and network tier as the GKE cluster. Keeping the address reserved prevents it from changing when the Traefik Service is recreated.
+
+```bash
+gcloud compute addresses describe "$TRAEFIK_IP_NAME" \
+  --region "$REGION" >/dev/null 2>&1 || \
+gcloud compute addresses create "$TRAEFIK_IP_NAME" \
+  --region "$REGION" \
+  --network-tier PREMIUM
+
+export TRAEFIK_IP="$(gcloud compute addresses describe "$TRAEFIK_IP_NAME" \
+  --region "$REGION" \
+  --format='value(address)')"
+echo "$TRAEFIK_IP"
+```
+
+Install the official Traefik chart. The checked-in values expose ports 80 and 443, redirect HTTP to HTTPS, persist ACME state, and configure a Let's Encrypt HTTP-01 resolver. A single replica is intentional because the open-source file-based ACME store must not be written concurrently by multiple Traefik replicas.
+
+```bash
+helm repo add traefik https://traefik.github.io/charts
+helm repo update
+helm upgrade --install traefik traefik/traefik \
+  --namespace traefik \
+  --create-namespace \
+  --version 41.2.0 \
+  --values deploy/k8s/traefik-values.yaml \
+  --set-string "service.spec.loadBalancerIP=${TRAEFIK_IP}" \
+  --set-string "certificatesResolvers.letsencrypt.acme.email=${ACME_EMAIL}" \
+  --wait
+
+kubectl -n traefik get service traefik
+kubectl -n traefik get pvc
+```
+
+If the domain is already hosted by Cloud DNS, use its managed-zone name as `DNS_ZONE`. To create a new public managed zone:
+
+```bash
+gcloud dns managed-zones describe "$DNS_ZONE" >/dev/null 2>&1 || \
+gcloud dns managed-zones create "$DNS_ZONE" \
+  --dns-name="${DNS_DOMAIN%.}." \
+  --description="Open SWE public DNS zone"
+
+gcloud dns managed-zones describe "$DNS_ZONE" \
+  --format='value(nameServers)'
+```
+
+For a newly created zone, configure the listed name servers at your domain registrar and wait for delegation to propagate. Then create the dashboard A record:
+
+```bash
+gcloud dns record-sets create "${OPENSWE_HOST%.}." \
+  --zone "$DNS_ZONE" \
+  --type A \
+  --ttl 300 \
+  --rrdatas "$TRAEFIK_IP"
+
+dig +short "$OPENSWE_HOST"
+```
+
+If DNS is hosted outside Cloud DNS, create the equivalent `A` record with that provider. Do not create the TLS route until public DNS resolves to `TRAEFIK_IP`; Let's Encrypt must reach port 80 for the HTTP-01 challenge.
+
+Apply the Traefik route after replacing the example hostname. `/hooks/*` goes directly to the webhook service; all other paths go to the UI, whose Nginx configuration proxies `/dashboard/api/*` and `/v1/*` to the API.
+
+```bash
+sed "s/openswe\.example\.com/${OPENSWE_HOST}/g" \
+  deploy/k8s/traefik-ingressroute.yaml | kubectl apply -f -
+```
+
+Update the runtime URLs so OAuth emits the production callback, cookies are marked secure, and CORS accepts the public origin. Keep the same values in your permanent Kustomize overlay or `configmap.yaml`; otherwise a later base apply will restore the loopback defaults.
+
+```bash
+kubectl -n "$PLATFORM_NAMESPACE" patch configmap openswe-config \
+  --type merge \
+  --patch "{\"data\":{\"DASHBOARD_BASE_URL\":\"${OPENSWE_ORIGIN}\",\"DASHBOARD_API_BASE_URL\":\"${OPENSWE_ORIGIN}\",\"DASHBOARD_ALLOWED_ORIGINS\":\"${OPENSWE_ORIGIN}\",\"CORS_ORIGINS\":\"${OPENSWE_ORIGIN}\"}}"
+
+kubectl -n "$PLATFORM_NAMESPACE" rollout restart \
+  deployment/openswe-api \
+  deployment/openswe-webhook \
+  deployment/openswe-harness
+kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-api --timeout=10m
+
+curl -fsS "${OPENSWE_ORIGIN}/healthz"
+curl -sS -o /dev/null -D - "${OPENSWE_ORIGIN}/dashboard/api/auth/login"
+kubectl -n traefik logs deployment/traefik --tail=100
+```
+
+Return to the GitHub App settings and verify that these exact production values are saved before testing login or deliveries:
+
+- Callback URL: `${OPENSWE_ORIGIN}/dashboard/api/auth/callback`
+- Webhook URL: `${OPENSWE_ORIGIN}/hooks/github`
+- Webhooks: active
+- Request user authorization (OAuth) during installation: enabled
+
+For highly available ingress, use multiple Traefik replicas with cert-manager or another shared certificate-management design instead of the single-writer ACME file shown here.
+
+### 10. Open the UI and run an end-to-end coding task
+
+For a local deployment, start the port forward and keep it running:
 
 ```bash
 kubectl -n "$PLATFORM_NAMESPACE" port-forward service/openswe-ui 18080:80
 ```
 
 Open [http://127.0.0.1:18080](http://127.0.0.1:18080), sign in with GitHub, select a repository installed for the GitHub App, and submit a small task such as:
+
+For the Traefik deployment, open `https://openswe.example.com` using your configured hostname instead. GitHub should redirect back to `/dashboard/api/auth/callback`, set the secure `osw_session` cookie, and return to the dashboard.
 
 ```text
 Add a short "Testing notes" section to README.md, inspect the diff, and report the changed files.
@@ -451,13 +587,13 @@ kubectl -n "$SANDBOX_NAMESPACE" exec "$SANDBOX_POD" -- git diff --stat
 
 The first command must print `kata-qemu`. A successful task should show model events in the UI, command/tool events from the sandbox, and a final response. After the cooldown period, KEDA should return the harness to zero replicas if no tasks remain.
 
-### 10. Production hardening and cleanup
+### 11. Production hardening and cleanup
 
 The checked-in manifests are a reproducible standalone starting point, not an HA production topology:
 
 - `deploy/k8s/postgresql.yaml` gives Open SWE a dedicated PostgreSQL StatefulSet but currently uses `emptyDir`; replace it with a PVC or Cloud SQL before storing production data.
 - The LiteLLM chart's standalone PostgreSQL is also a getting-started option. Use a separate managed database, backups, and Redis for multi-replica LiteLLM.
-- Add HTTPS Ingress, DNS, and managed certificates. Then update `DASHBOARD_BASE_URL`, `DASHBOARD_API_BASE_URL`, CORS origins, and the GitHub callback/webhook URLs to the public HTTPS origin.
+- Back up Traefik's ACME volume or move certificate lifecycle to cert-manager before making ingress highly available.
 - Restrict GitHub App repository access, configure NetworkPolicies and egress controls, set ResourceQuotas in the sandbox namespace, and enable GKE node autoscaling for the Kata pool.
 - Pin container, Helm chart, Agent Sandbox, and Kata versions and test upgrades in a non-production cluster.
 
@@ -467,7 +603,7 @@ Delete the cluster when it is no longer needed:
 gcloud container clusters delete "$CLUSTER_NAME" --zone "$ZONE" --quiet
 ```
 
-References: [GKE Agent Sandbox](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/machine-learning/agent-sandbox), [Agent Sandbox releases](https://github.com/kubernetes-sigs/agent-sandbox/releases), [Kata installation](https://github.com/kata-containers/kata-containers/blob/main/docs/installation.md), [KEDA installation](https://keda.sh/docs/2.20/deploy/), and [KEDA NATS JetStream scaler](https://keda.sh/docs/2.20/scalers/nats-jetstream/).
+References: [GKE Agent Sandbox](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/machine-learning/agent-sandbox), [Agent Sandbox releases](https://github.com/kubernetes-sigs/agent-sandbox/releases), [Kata installation](https://github.com/kata-containers/kata-containers/blob/main/docs/installation.md), [KEDA installation](https://keda.sh/docs/2.20/deploy/), [KEDA NATS JetStream scaler](https://keda.sh/docs/2.20/scalers/nats-jetstream/), [Traefik Kubernetes installation](https://doc.traefik.io/traefik/getting-started/kubernetes/), [GKE static LoadBalancer addresses](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/service-load-balancer-parameters), [Cloud DNS records](https://docs.cloud.google.com/dns/docs/records), and [GitHub App OAuth callbacks](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url).
 
 ---
 
