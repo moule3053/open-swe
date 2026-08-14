@@ -4,7 +4,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: openswe-harness
-  namespace: openswe
+  namespace: alephat
 spec:
   scaleTargetRef:
     name: openswe-harness
@@ -13,12 +13,12 @@ spec:
   cooldownPeriod: 120
   pollingInterval: 15
   triggers:
-    # Preferred: Prometheus metric tasks_queued (export from API later).
-    # Fallback: NATS JetStream pending on TASKS stream consumer.
     - type: nats-jetstream
       metadata:
-        natsServerMonitoringEndpoint: nats.openswe.svc:8222
+        natsServerMonitoringEndpoint: nats.alephat.svc:8222
         account: "$G"
         stream: TASKS
         consumer: harness-workers
         lagThreshold: "1"
+        activationLagThreshold: "0"
+        useHttps: "false"

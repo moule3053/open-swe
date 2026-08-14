@@ -11,4 +11,3 @@ resources:
   - ui-deployment.yaml
   - nats.yaml
   - postgresql.yaml
-  - agent-sandbox-networkpolicy.yaml

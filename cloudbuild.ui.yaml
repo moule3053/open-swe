@@ -1,5 +1,7 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-f", "deploy/Dockerfile.ui", "-t", "us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-ui:latest", "."]
+    args: ["build", "-f", "deploy/Dockerfile.ui", "-t", "${_UI_IMAGE}", "."]
 images:
-  - us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-ui:latest
+  - "${_UI_IMAGE}"
+substitutions:
+  _UI_IMAGE: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-ui:latest

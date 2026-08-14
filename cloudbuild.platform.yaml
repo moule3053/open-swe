@@ -1,5 +1,7 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-f", "deploy/Dockerfile.harness", "-t", "us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest", "."]
+    args: ["build", "-f", "deploy/Dockerfile.harness", "-t", "${_PLATFORM_IMAGE}", "."]
 images:
-  - us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+  - "${_PLATFORM_IMAGE}"
+substitutions:
+  _PLATFORM_IMAGE: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest

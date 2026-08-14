@@ -110,6 +110,21 @@ spec:
                 secretKeyRef:
                   name: openswe-oauth
                   key: TOKEN_ENCRYPTION_KEY
+            - name: GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-oauth
+                  key: GITHUB_APP_ID
+            - name: GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-oauth
+                  key: GITHUB_APP_PRIVATE_KEY
+            - name: GITHUB_APP_INSTALLATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: openswe-oauth
+                  key: GITHUB_APP_INSTALLATION_ID
             - name: OPENSANDBOX_BASE_URL
               valueFrom:
                 secretKeyRef:
