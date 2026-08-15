@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+if [ -z "${GH_TOKEN:-}" ]; then
+  auth_header="$(git config --get http.https://github.com/.extraheader || true)"
+  case "$auth_header" in
+    "Authorization: Basic "*)
+      encoded="${auth_header#Authorization: Basic }"
+      credentials="$(printf '%s' "$encoded" | base64 -d)"
+      GH_TOKEN="${credentials#x-access-token:}"
+      export GH_TOKEN
+      ;;
+  esac
+fi
+
+exec /usr/bin/gh "$@"

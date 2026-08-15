@@ -87,6 +87,7 @@ async def apply_ingress_command(session: AsyncSession, command: dict[str, Any]) 
                 agent_type=command.get("agent_type", "coding"),
                 metadata=command.get("metadata") or {},
                 platform_default_model=settings.default_model,
+                platform_default_sandbox_provider=settings.default_sandbox_provider,
             )
             return {
                 "accepted": True,

@@ -1,0 +1,7 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "deploy/Dockerfile.sandbox", "-t", "${_SANDBOX_IMAGE}", "."]
+images:
+  - "${_SANDBOX_IMAGE}"
+substitutions:
+  _SANDBOX_IMAGE: us-central1-docker.pkg.dev/$PROJECT_ID/alephat/alephat-sandbox:latest

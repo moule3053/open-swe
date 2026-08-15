@@ -82,7 +82,7 @@ class Settings:
         default_factory=lambda: _env("DEFAULT_MODEL", "openai:gpt-4o-mini") or "openai:gpt-4o-mini"
     )
     default_sandbox_provider: str = field(
-        default_factory=lambda: _env("DEFAULT_SANDBOX_PROVIDER", "daytona") or "daytona"
+        default_factory=lambda: _env("DEFAULT_SANDBOX_PROVIDER", "agent_sandbox") or "agent_sandbox"
     )
     bootstrap_dev_defaults: bool = field(
         default_factory=lambda: _env_bool("BOOTSTRAP_DEV_DEFAULTS", False)

@@ -1,4 +1,3 @@
-import base64
 import json
 from typing import Any, cast
 
@@ -36,7 +35,10 @@ async def test_execute_uses_shell_and_preserves_stdout_and_stderr():
     assert result.exit_code == 7
     assert result.output == "output\nfailure\n"
     assert json.loads(requests[0].content) == {
-        "command": "/bin/sh -lc 'printf '\"'\"'hello'\"'\"'\necho done'"
+        "command": (
+            "/bin/sh -lc 'mkdir -p -- /app/repo && cd -- /app/repo && "
+            "printf '\"'\"'hello'\"'\"'\necho done'"
+        )
     }
 
 
@@ -64,7 +66,7 @@ async def test_file_transfer_is_confined_to_runtime_workspace():
     download = await backend.adownload_files([("/app/nested/file.txt")])
 
     assert upload[0].error is None
-    assert b'filename="nested/file.txt"' in uploaded[0]
+    assert b'filename="repo/nested/file.txt"' in uploaded[0]
     assert download[0].content == b"saved content"
     assert download[0].error is None
 
@@ -99,8 +101,10 @@ async def test_large_edit_keeps_temporary_files_in_workspace():
         if request.url.path == "/execute":
             command = json.loads(request.content)["command"]
             commands.append(command)
-            stdout = '{"count": 1}' if "mkdir -p" not in command else ""
-            return httpx.Response(200, json={"exit_code": 0, "stdout": stdout, "stderr": ""})
+            return httpx.Response(
+                200,
+                json={"exit_code": 0, "stdout": '{"count": 1}', "stderr": ""},
+            )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     backend = AgentSandboxBackend(
@@ -114,9 +118,8 @@ async def test_large_edit_keeps_temporary_files_in_workspace():
     assert result.error is None
     assert result.path == "/large.txt"
     assert len(uploads) == 2
-    assert all(b'filename=".deepagents-tmp/edit-' in upload for upload in uploads)
-    workspace_prefix = base64.b64encode(b"/app/.deepagents-tmp/").decode().rstrip("=")
-    assert any(workspace_prefix in command for command in commands)
+    assert all(b'filename="repo/.deepagents-tmp/edit-' in upload for upload in uploads)
+    assert any("/app/repo/.deepagents-tmp" in command for command in commands)
     assert not any("/tmp/.deepagents_edit_" in command for command in commands)
 
 
@@ -139,7 +142,7 @@ async def test_resolved_agent_sandbox_has_deep_agents_backend(monkeypatch):
 
     assert isinstance(ref.handle, AgentSandboxBackend)
     assert ref.handle.id == "sandbox-1"
-    assert ref.handle.workspace == "/app"
+    assert ref.handle.workspace == "/app/repo"
 
 
 @pytest.mark.asyncio
@@ -217,5 +220,7 @@ async def test_agent_sandbox_executes_through_deep_agents_runtime(monkeypatch):
     assert result.success
     assert result.final_message == "deep agent complete"
     assert result.checkpoint_blob["runtime"] == "deepagents"
-    assert executed == ["/bin/sh -lc 'printf deep-agent-ok'"]
+    assert executed == [
+        "/bin/sh -lc 'mkdir -p -- /app/repo && cd -- /app/repo && printf deep-agent-ok'"
+    ]
     assert "tool_started" in events

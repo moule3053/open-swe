@@ -1190,6 +1190,7 @@ async def post_thread_commands(
             mcp_mode="inherit",
             metadata=run_metadata,
             platform_default_model=settings.default_model,
+            platform_default_sandbox_provider=settings.default_sandbox_provider,
         )
         await db.commit()
     else:

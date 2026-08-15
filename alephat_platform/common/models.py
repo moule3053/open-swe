@@ -57,7 +57,7 @@ class OrgSettings(Base):
     __tablename__ = "org_settings"
     org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     default_model: Mapped[str] = mapped_column(Text, default="gpt-4.1")
-    default_sandbox_provider: Mapped[str] = mapped_column(Text, default="daytona")
+    default_sandbox_provider: Mapped[str] = mapped_column(Text, default="agent_sandbox")
     enabled_sandbox_providers: Mapped[list[str]] = mapped_column(
         ARRAY(Text), server_default=text("ARRAY['daytona','agent_sandbox','opensandbox']")
     )
@@ -134,7 +134,7 @@ class Task(Base):
     base_ref: Mapped[str | None] = mapped_column(Text)
     prompt: Mapped[str | None] = mapped_column(Text)
     model: Mapped[str] = mapped_column(Text, nullable=False)
-    sandbox_provider: Mapped[str] = mapped_column(Text, default="daytona")
+    sandbox_provider: Mapped[str] = mapped_column(Text, default="agent_sandbox")
     mcp_server_ids: Mapped[list[uuid.UUID]] = mapped_column(
         ARRAY(UUID(as_uuid=True)), server_default=text("ARRAY[]::uuid[]")
     )

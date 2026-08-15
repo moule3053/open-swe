@@ -22,7 +22,7 @@ This document is the **contract** between services: identities, state machine, H
 7. **Idempotent consumers:** every external delivery and every NATS message has a stable idempotency key stored in Postgres.
 8. **Harness is extensible by `agent_type`**, not by new deployables (until scale profiles force a split).
 9. **LLM access is pluggable** — harness uses **direct provider APIs** (OpenAI, Anthropic, Fireworks, Google) by default, or an optional **LiteLLM** proxy when enabled (`LLM_MODE` / `LITELLM_ENABLED`). Provider credentials stay on the harness; never in the sandbox.
-10. **Sandbox provider is pluggable and user-selectable** — supported: `daytona` (default), `agent_sandbox`, `opensandbox`. Selection resolves per task (§10).
+10. **Sandbox provider is pluggable and user-selectable** — supported: `agent_sandbox` (default), `daytona`, `opensandbox`. Selection resolves per task (§10).
 11. **Users and orgs can configure MCP servers** — harness loads enabled MCP configs for a run and exposes their tools to the agent. MCP traffic runs **on the harness (server-side)**, not inside the sandbox, unless a server is explicitly marked sandbox-side (§11).
 
 ---
@@ -168,7 +168,7 @@ Not a migration file — contract-level tables. Exact DDL is implementation.
 
 - `orgs`, `users`, `org_memberships`
 - `user_identities` (GitHub login, Slack id, email)
-- `org_settings` (defaults: `default_model`, `default_sandbox_provider=daytona`, agent policy, enabled sandbox providers, MCP policy)
+- `org_settings` (defaults: `default_model`, `default_sandbox_provider=agent_sandbox`, agent policy, enabled sandbox providers, MCP policy)
 - `user_settings` (optional overrides: preferred `model`, preferred `sandbox_provider`, default MCP enable set)
 - `secrets` / token rows (encrypted at rest; app DEK via KMS or envelope keys) — includes per-org LiteLLM virtual keys if used, per-provider sandbox credentials, and **MCP auth material** (tokens, headers) referenced by `mcp_servers`
 - **`mcp_servers`** — user- and org-scoped MCP server definitions (§11)
@@ -243,7 +243,7 @@ Create a task from API or UI.
 | Field | Required | Notes |
 |---|---|---|
 | `model` | no | If omitted → user default → org `default_model` → platform default |
-| `sandbox_provider` | no | If omitted → user default → org `default_sandbox_provider` → **`daytona`**. Must be in org-enabled set |
+| `sandbox_provider` | no | If omitted → user default → org `default_sandbox_provider` → configured platform default (**`agent_sandbox`** when unset). Must be in org-enabled set |
 
 Response `201`:
 
@@ -333,7 +333,7 @@ Includes lease worker id (admin), timestamps, error.
 
 ### 6.4 Admin / config (sketch)
 
-- `GET/PATCH /v1/orgs/{org_id}/settings` — includes `default_model`, `default_sandbox_provider` (default **`daytona`**), `enabled_sandbox_providers`, MCP org policy
+- `GET/PATCH /v1/orgs/{org_id}/settings` — includes `default_model`, `default_sandbox_provider` (default **`agent_sandbox`**), `enabled_sandbox_providers`, MCP org policy
 - `GET/PUT /v1/orgs/{org_id}/models` — org allowlist / aliases for model ids (direct `provider:model` and/or LiteLLM aliases)
 - `GET /v1/sandbox-providers` — catalog of providers available to the caller (`daytona`, `agent_sandbox`, `opensandbox`) with enabled flags
 - `GET/PATCH /v1/me/settings` — user preferred `model`, preferred `sandbox_provider`, default MCP server ids
@@ -790,8 +790,8 @@ Supported `sandbox_provider` values:
 
 | Provider id | Meaning | Default? |
 |---|---|---|
-| `daytona` | [Daytona](https://www.daytona.io/) sandboxes | **Yes — platform & org default** |
-| `agent_sandbox` | [kubernetes-sigs/agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) (in-cluster agent sandboxes) | No |
+| `daytona` | [Daytona](https://www.daytona.io/) sandboxes | No |
+| `agent_sandbox` | [kubernetes-sigs/agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox) (in-cluster agent sandboxes) | **Yes — platform & org default** |
 | `opensandbox` | [OpenSandbox](https://github.com/opensandbox-group/OpenSandbox) control plane / SDK | No |
 
 All three **must** be implemented behind one harness interface so agents are provider-agnostic.
@@ -803,7 +803,7 @@ Resolution order for `sandbox_provider` at task create (API, UI, or normalized w
 1. Explicit request field / UI choice / source command override (if allowed)
 2. User preference (`user_settings.sandbox_provider`)
 3. Org default (`org_settings.default_sandbox_provider`)
-4. Platform default → **`daytona`**
+4. Configured platform default (`DEFAULT_SANDBOX_PROVIDER`) → **`agent_sandbox`** when unset
 
 Constraints:
 
@@ -838,8 +838,8 @@ Provider-specific config (namespaces, snapshots, resource classes, OpenSandbox e
 
 ### 10.5 UI / API product requirements
 
-- Task create UI: **model** picker (provider catalog and/or LiteLLM aliases) and **sandbox** picker (`daytona` default selected).
-- Org admin: enable/disable providers, set default provider to `daytona` (or other), configure credentials status (configured / missing).
+- Task create UI: **model** picker (provider catalog and/or LiteLLM aliases) and **sandbox** picker (configured default selected).
+- Org admin: enable/disable providers, set the default provider, and configure credentials status (configured / missing).
 - Task detail: show resolved `model` + `sandbox_provider` + sandbox lifecycle events.
 
 ### 10.6 Non-goals for providers
@@ -1063,7 +1063,7 @@ Harness min=0 allowed if cold start + sandbox create latency acceptable; else mi
 | Notifier | In-harness vs service | **In-harness** for Slack/GitHub v1 |
 | Checkpoint **format** | LG SQL checkpointer tables vs opaque `graph_checkpoints` blob | **LG Postgres checkpointer** preferred; either is fine **as long as durability is Postgres** |
 | SSE source | Postgres poll vs NATS | **Postgres poll / LISTEN** |
-| Org enabled sandboxes | subset vs all three | All **configured** providers; default selection **`daytona`** |
+| Org enabled sandboxes | subset vs all three | All **configured** providers; default selection **`agent_sandbox`** |
 | Sandbox fallback on create failure | fail vs try next provider | **Fail** (no silent fallback) |
 | MCP optional connect failure | fail_open vs fail_closed | **fail_open** (user/optional); **fail_closed** (org-required) |
 | MCP stdio transport | allow vs deny | **Deny** by default in multi-tenant; org opt-in |
@@ -1072,7 +1072,7 @@ Harness min=0 allowed if cold start + sandbox create latency acceptable; else mi
 
 - Harness checkpoint durability **must** be Postgres (§1.2 / §5.4 / §9.3)
 - LLM via **direct providers and/or optional LiteLLM** (§1.9 / §10.1)
-- Sandbox providers **`daytona` | `agent_sandbox` | `opensandbox`**, user-selectable, default **`daytona`** (§1.10 / §10)
+- Sandbox providers **`daytona` | `agent_sandbox` | `opensandbox`**, user-selectable, configured platform default with **`agent_sandbox`** as the fallback (§1.10 / §10)
 - **User/org-configurable MCP servers** loaded by harness (§1.11 / §6.6 / §11)
 
 ---
@@ -1094,7 +1094,7 @@ A first vertical slice is “done” when:
 - [ ] Second `agent_type` registers without new deployable
 - [ ] Task create selects model; harness works with `LLM_MODE=direct` without LiteLLM
 - [ ] Optional `LLM_MODE=litellm` / `LITELLM_ENABLED=true` routes through LiteLLM
-- [ ] Task create selects sandbox provider; default is `daytona` when omitted
+- [ ] Task create selects sandbox provider; configured platform default is used when omitted
 - [ ] Harness runs same agent against `daytona`, `agent_sandbox`, and `opensandbox` via provider interface
 - [ ] Park/resume reconnects the same provider + sandbox id when warm
 - [ ] User can CRUD MCP servers via API/UI; secrets never returned on GET
@@ -1112,3 +1112,4 @@ A first vertical slice is “done” when:
 | 0.3 | 2026-07-25 | LiteLLM required; sandboxes daytona (default), agent_sandbox, opensandbox; user-selectable |
 | 0.4 | 2026-07-25 | User/org-configurable MCP servers (API, snapshot, harness runtime, security) |
 | 0.5 | 2026-07-25 | LiteLLM optional; direct OpenAI/Anthropic/Fireworks/Google in harness |
+| 0.6 | 2026-08-15 | Sandbox fallback made configuration-driven; built-in default changed to agent_sandbox |

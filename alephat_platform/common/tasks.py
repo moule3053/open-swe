@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from alephat_platform.common.enums import (
+    DEFAULT_SANDBOX_PROVIDER,
     AgentType,
     ApprovalStatus,
     McpMode,
@@ -88,6 +89,7 @@ async def create_task(
     mcp_mode: McpMode | str = McpMode.INHERIT,
     metadata: dict[str, Any] | None = None,
     platform_default_model: str = "gpt-4.1",
+    platform_default_sandbox_provider: str = DEFAULT_SANDBOX_PROVIDER.value,
 ) -> Task:
     agent = AgentType(agent_type)
     source_val = TaskSource(source) if not isinstance(source, TaskSource) else source
@@ -109,6 +111,7 @@ async def create_task(
         enabled=list(org_settings.enabled_sandbox_providers)
         if org_settings and org_settings.enabled_sandbox_providers
         else None,
+        platform_default=platform_default_sandbox_provider,
     )
 
     # Load visible MCP servers

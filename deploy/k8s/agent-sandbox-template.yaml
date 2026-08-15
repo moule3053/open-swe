@@ -25,7 +25,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: runtime
-          image: registry.k8s.io/agent-sandbox/python-runtime-sandbox:v0.1.0
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-sandbox:latest
           ports:
             - name: toolbox
               containerPort: 8888

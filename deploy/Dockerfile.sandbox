@@ -1,0 +1,9 @@
+FROM registry.k8s.io/agent-sandbox/python-runtime-sandbox:v0.1.0
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl gh git \
+    && rm -rf /var/lib/apt/lists/*
+COPY deploy/sandbox-gh /usr/local/bin/gh
+RUN chmod 755 /usr/local/bin/gh
+USER 1000

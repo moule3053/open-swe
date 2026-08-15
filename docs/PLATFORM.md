@@ -35,10 +35,10 @@ docker-compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --scale
 | LLM providers | env on harness | Direct OpenAI/Anthropic/Fireworks/Google (**default**) |
 | LiteLLM | `litellm` (profile `with-litellm`) | **Optional** proxy when `LITELLM_ENABLED=true` |
 
-Sandboxes: `daytona` (default), `agent_sandbox`, `opensandbox`. Real Daytona handles and the
+Sandboxes: `agent_sandbox` (default), `daytona`, `opensandbox`. Real Daytona handles and the
 Kubernetes Agent Sandbox backend run through `deepagents.create_deep_agent`. The Agent Sandbox
-backend confines file operations to `/app` and implements shell execution plus upload/download over
-the Python runtime service. Stub sandboxes are fail-closed by default and can only be enabled
+backend confines file operations to `/app/repo` and implements shell execution plus upload/download
+over the Python runtime service. Stub sandboxes are fail-closed by default and can only be enabled
 explicitly with `ALLOW_STUB_SANDBOXES=true` for local control-plane/UI testing.
 
 ## Docker Compose (recommended local)

@@ -16,6 +16,9 @@ spec:
           image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
           command: ["python", "-m", "alephat_platform.migrate"]
+          envFrom:
+            - configMapRef:
+                name: alephat-config
           env:
             - name: DATABASE_URL
               valueFrom:

@@ -165,13 +165,12 @@ def _make_deep_agent_model(model_id: str, *, effort: Any = None) -> Any:
     if resolve_llm_mode() == "litellm":
         from langchain_openai import ChatOpenAI
 
-        parsed = parse_model_id(model_id, default_provider=settings.default_llm_provider)
         return ChatOpenAI(
             model=model_id,
             api_key=settings.litellm_api_key,
             base_url=settings.litellm_base_url or "http://localhost:4000",
             max_retries=5,
-            **_model_effort_kwargs(parsed.provider, effort),
+            **_model_effort_kwargs("openai", effort),
         )
 
     parsed = parse_model_id(model_id, default_provider=settings.default_llm_provider)

@@ -173,6 +173,7 @@ export PLATFORM_NAMESPACE="alephat"
 export SANDBOX_NAMESPACE="alephat-sandboxes"
 export PLATFORM_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/alephat-platform:latest"
 export UI_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/alephat-ui:latest"
+export SANDBOX_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/alephat-sandbox:latest"
 
 # Required when publishing the dashboard with Traefik in step 9.
 export DNS_DOMAIN="example.com"
@@ -253,17 +254,23 @@ kubectl apply -f \
 kubectl wait --for=condition=Established crd/sandboxes.agents.x-k8s.io --timeout=2m
 kubectl wait --for=condition=Established \
   crd/sandboxtemplates.extensions.agents.x-k8s.io --timeout=2m
-kubectl apply -f deploy/k8s/agent-sandbox-template.yaml
 
 kubectl get runtimeclass kata-qemu
-kubectl -n "$SANDBOX_NAMESPACE" get sandboxtemplate python-runtime-template
 ```
 
-The checked-in template uses `runtimeClassName: kata-qemu`, the Agent Sandbox Python toolbox on port `8888`, a non-root user, no service-account token, dropped capabilities, and resource limits. The harness creates a direct `Sandbox` from this template for every task; a warm pool is not required by this provider.
+The sandbox template is applied after its runtime image is built in steps 7–8. It uses
+`runtimeClassName: kata-qemu`, the Agent Sandbox Python toolbox on port `8888`, a non-root user,
+no service-account token, dropped capabilities, and resource limits. The Alephat runtime image adds
+Git, GitHub CLI, curl, and CA certificates to the pinned upstream toolbox image so workers can clone
+the selected repository and publish pull requests. The harness creates a direct `Sandbox` from this
+template for every task; a warm pool is not required by this provider.
 
 ### 4. Install KEDA
 
-KEDA scales the harness deployment from zero to fifty workers based on the pending message count for the durable `harness-workers` consumer on the `TASKS` JetStream stream. One harness Pod processes one task at a time.
+KEDA scales the harness deployment from one to fifty workers based on the pending message count for
+the durable `harness-workers` consumer on the `TASKS` JetStream stream. Keeping one worker running
+prevents queue-based scale-down from interrupting a task after its message has been claimed. One
+harness Pod processes one task at a time.
 
 ```bash
 helm repo add kedacore https://kedacore.github.io/charts
@@ -429,7 +436,7 @@ For production, create these secrets with Secret Manager plus External Secrets o
 
 ### 7. Build and push the Alephat images
 
-Create an Artifact Registry Docker repository and submit both builds to Cloud Build:
+Create an Artifact Registry Docker repository and submit all three builds to Cloud Build:
 
 ```bash
 gcloud artifacts repositories describe "$AR_REPOSITORY" \
@@ -444,6 +451,9 @@ gcloud builds submit . \
 gcloud builds submit . \
   --config cloudbuild.ui.yaml \
   --substitutions="_UI_IMAGE=${UI_IMAGE}"
+gcloud builds submit . \
+  --config cloudbuild.sandbox.yaml \
+  --substitutions="_SANDBOX_IMAGE=${SANDBOX_IMAGE}"
 ```
 
 Point Kustomize at those images without editing every Deployment:
@@ -479,6 +489,9 @@ if this was an upgrade; a fresh installation does not need a restore.
 ```bash
 kubectl apply -f deploy/k8s/agent-sandbox-rbac.yaml
 kubectl apply -f deploy/k8s/agent-sandbox-networkpolicy.yaml
+sed \
+  "s|us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-sandbox:latest|${SANDBOX_IMAGE}|g" \
+  deploy/k8s/agent-sandbox-template.yaml | kubectl apply -f -
 kubectl apply -k deploy/k8s
 
 kubectl -n "$PLATFORM_NAMESPACE" wait \

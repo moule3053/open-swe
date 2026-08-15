@@ -104,6 +104,7 @@ async def post_task(
             mcp_mode=body.mcp_mode,
             metadata=body.metadata,
             platform_default_model=settings.default_model,
+            platform_default_sandbox_provider=settings.default_sandbox_provider,
         )
     except PlatformError:
         raise

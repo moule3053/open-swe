@@ -30,7 +30,8 @@ from deepagents.backends.sandbox import BaseSandbox, _build_edit_tmpfile_cmd, _p
 class AgentSandboxBackend(BaseSandbox):
     """Async Deep Agents backend backed by a Python runtime Sandbox service."""
 
-    workspace = "/app"
+    runtime_root = "/app"
+    workspace = "/app/repo"
 
     def __init__(
         self,
@@ -55,10 +56,14 @@ class AgentSandboxBackend(BaseSandbox):
             raise ValueError("path must be absolute")
 
         normalized = posixpath.normpath(path)
-        if normalized == "/app":
+        if normalized in {AgentSandboxBackend.runtime_root, AgentSandboxBackend.workspace}:
             return ""
-        if normalized.startswith("/app/"):
-            normalized = normalized[4:]
+        workspace_prefix = f"{AgentSandboxBackend.workspace}/"
+        runtime_prefix = f"{AgentSandboxBackend.runtime_root}/"
+        if normalized.startswith(workspace_prefix):
+            normalized = normalized[len(AgentSandboxBackend.workspace) :]
+        elif normalized.startswith(runtime_prefix):
+            normalized = normalized[len(AgentSandboxBackend.runtime_root) :]
         relative = normalized.lstrip("/")
         if any(part == ".." for part in relative.split("/")):
             raise ValueError("path traversal is not allowed")
@@ -68,6 +73,10 @@ class AgentSandboxBackend(BaseSandbox):
     def _runtime_path(cls, path: str) -> str:
         relative = cls._relative_path(path)
         return cls.workspace if not relative else f"{cls.workspace}/{relative}"
+
+    @classmethod
+    def _transfer_path(cls, path: str) -> str:
+        return posixpath.relpath(cls._runtime_path(path), cls.runtime_root)
 
     @staticmethod
     def _path_error(path: str, exc: ValueError) -> str:
@@ -98,7 +107,9 @@ class AgentSandboxBackend(BaseSandbox):
         timeout: int | None = None,
     ) -> tuple[int, str, str]:
         request_timeout = timeout if timeout is not None else 120
-        shell_command = f"/bin/sh -lc {shlex.quote(command)}"
+        workspace = shlex.quote(self.workspace)
+        scoped_command = f"mkdir -p -- {workspace} && cd -- {workspace} && {command}"
+        shell_command = f"/bin/sh -lc {shlex.quote(scoped_command)}"
         response = await self._request(
             "POST",
             "/execute",
@@ -139,10 +150,10 @@ class AgentSandboxBackend(BaseSandbox):
         responses: list[FileUploadResponse] = []
         for path, content in files:
             try:
-                relative = self._relative_path(path)
-                if not relative:
+                if not self._relative_path(path):
                     raise ValueError("workspace root is a directory")
                 runtime_path = self._runtime_path(path)
+                transfer_path = self._transfer_path(path)
                 parent = posixpath.dirname(runtime_path)
                 mkdir = await self.aexecute(f"mkdir -p -- {shlex.quote(parent)}")
                 if mkdir.exit_code != 0:
@@ -157,7 +168,7 @@ class AgentSandboxBackend(BaseSandbox):
                     "POST",
                     "/upload",
                     timeout=120,
-                    files={"file": (relative, content, "application/octet-stream")},
+                    files={"file": (transfer_path, content, "application/octet-stream")},
                 )
                 if response.status_code == 403:
                     responses.append(FileUploadResponse(path=path, error=PERMISSION_DENIED))
@@ -177,10 +188,9 @@ class AgentSandboxBackend(BaseSandbox):
         responses: list[FileDownloadResponse] = []
         for path in paths:
             try:
-                relative = self._relative_path(path)
-                if not relative:
+                if not self._relative_path(path):
                     raise ValueError("workspace root is a directory")
-                encoded = urllib.parse.quote(relative, safe="")
+                encoded = urllib.parse.quote(self._transfer_path(path), safe="")
                 response = await self._request(
                     "GET",
                     f"/download/{encoded}",

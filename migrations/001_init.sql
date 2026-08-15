@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS org_memberships (
 CREATE TABLE IF NOT EXISTS org_settings (
     org_id UUID PRIMARY KEY REFERENCES orgs(org_id) ON DELETE CASCADE,
     default_model TEXT NOT NULL DEFAULT 'openai:gpt-4o-mini',
-    default_sandbox_provider TEXT NOT NULL DEFAULT 'daytona',
+    default_sandbox_provider TEXT NOT NULL DEFAULT 'agent_sandbox',
     enabled_sandbox_providers TEXT[] NOT NULL DEFAULT ARRAY['daytona', 'agent_sandbox', 'opensandbox'],
     mcp_stdio_allowed BOOLEAN NOT NULL DEFAULT false,
     max_mcp_servers_per_run INT NOT NULL DEFAULT 10,
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     base_ref TEXT,
     prompt TEXT,
     model TEXT NOT NULL,
-    sandbox_provider TEXT NOT NULL DEFAULT 'daytona',
+    sandbox_provider TEXT NOT NULL DEFAULT 'agent_sandbox',
     mcp_server_ids UUID[] NOT NULL DEFAULT ARRAY[]::UUID[],
     mcp_snapshot JSONB NOT NULL DEFAULT '[]'::jsonb,
     park_reason TEXT,
@@ -114,6 +114,11 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_org_status ON tasks(org_id, status);
+
+ALTER TABLE org_settings
+    ALTER COLUMN default_sandbox_provider SET DEFAULT 'agent_sandbox';
+ALTER TABLE tasks
+    ALTER COLUMN sandbox_provider SET DEFAULT 'agent_sandbox';
 
 CREATE TABLE IF NOT EXISTS runs (
     run_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,8 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from deepagents.backends import StateBackend
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage
 
+from alephat_platform.common.config import clear_settings_cache
 from alephat_platform.harness import agents
 from alephat_platform.harness.agents import REGISTRY, RunContext, get_agent
 from alephat_platform.harness.sandboxes import SandboxRef
@@ -158,3 +161,19 @@ def test_runtime_instructions_include_repo_rules_and_plan_mode():
 def test_model_effort_kwargs_match_provider_contracts():
     assert agents._model_effort_kwargs("google_genai", "xhigh") == {"thinking_level": "high"}
     assert agents._model_effort_kwargs("openai", "medium") == {"reasoning_effort": "medium"}
+
+
+def test_litellm_google_alias_uses_openai_compatible_effort(monkeypatch):
+    monkeypatch.setenv("LLM_MODE", "litellm")
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://litellm:4000")
+    clear_settings_cache()
+
+    try:
+        with patch("langchain_openai.ChatOpenAI") as chat_openai:
+            agents._make_deep_agent_model("google:gemini-3.5-flash", effort="medium")
+    finally:
+        clear_settings_cache()
+
+    kwargs = chat_openai.call_args.kwargs
+    assert kwargs["reasoning_effort"] == "medium"
+    assert "thinking_level" not in kwargs

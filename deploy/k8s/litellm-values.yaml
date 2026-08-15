@@ -25,8 +25,7 @@ proxy_config:
         api_key: os.environ/ANTHROPIC_API_KEY
     - model_name: google:gemini-3.5-flash
       litellm_params:
-        model: gemini/gemini-2.5-flash
-        api_key: os.environ/GEMINI_API_KEY
+        model: vertex_ai/gemini-2.5-flash
     - model_name: gemini-5.6-flash
       litellm_params:
         model: vertex_ai/gemini-2.5-flash

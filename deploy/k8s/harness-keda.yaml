@@ -8,7 +8,7 @@ metadata:
 spec:
   scaleTargetRef:
     name: alephat-harness
-  minReplicaCount: 0
+  minReplicaCount: 1
   maxReplicaCount: 50
   cooldownPeriod: 120
   pollingInterval: 15

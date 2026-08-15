@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 
+from alephat_platform.common.config import Settings
 from alephat_platform.common.enums import AgentType, McpMode, SandboxProvider
 from alephat_platform.common.errors import PlatformError
 from alephat_platform.common.resolution import (
@@ -41,14 +42,35 @@ def test_model_resolution_order():
     )
 
 
-def test_sandbox_default_daytona():
+def test_sandbox_default_agent_sandbox():
     p = resolve_sandbox_provider(
         request_provider=None,
         user_preferred=None,
         org_default=None,
         enabled=["daytona", "agent_sandbox", "opensandbox"],
     )
-    assert p == SandboxProvider.DAYTONA
+    assert p == SandboxProvider.AGENT_SANDBOX
+
+
+def test_sandbox_platform_default_is_configurable():
+    p = resolve_sandbox_provider(
+        request_provider=None,
+        user_preferred=None,
+        org_default=None,
+        enabled=["daytona", "agent_sandbox", "opensandbox"],
+        platform_default="opensandbox",
+    )
+    assert p == SandboxProvider.OPENSANDBOX
+
+
+def test_settings_default_sandbox_provider(monkeypatch):
+    monkeypatch.delenv("DEFAULT_SANDBOX_PROVIDER", raising=False)
+    assert Settings().default_sandbox_provider == "agent_sandbox"
+
+
+def test_settings_sandbox_provider_from_environment(monkeypatch):
+    monkeypatch.setenv("DEFAULT_SANDBOX_PROVIDER", "opensandbox")
+    assert Settings().default_sandbox_provider == "opensandbox"
 
 
 def test_sandbox_user_select_opensandbox():
