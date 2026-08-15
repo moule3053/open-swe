@@ -2,7 +2,12 @@
 .venv/
 **/__pycache__/
 ui/.pnpm-store/
+ui/.output/
 ui/core
 node_modules/
+**/.env
+**/.env.local
+**/*.pem
+**/*.key
 *.pyc
 *.log

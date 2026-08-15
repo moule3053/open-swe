@@ -29,8 +29,7 @@ proxy_config:
         api_key: os.environ/GEMINI_API_KEY
     - model_name: gemini-5.6-flash
       litellm_params:
-        model: gemini/gemini-2.5-flash
-        api_key: os.environ/GEMINI_API_KEY
+        model: vertex_ai/gemini-2.5-flash
   general_settings:
     master_key: os.environ/PROXY_MASTER_KEY
   litellm_settings:
@@ -41,6 +40,11 @@ db:
   deployStandalone: true
 
 postgresql:
+  global:
+    security:
+      allowInsecureImages: true
+  image:
+    repository: bitnamilegacy/postgresql
   auth:
     username: litellm
     database: litellm

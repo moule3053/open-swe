@@ -184,14 +184,16 @@ export TRAEFIK_IP_NAME="alephat-traefik"
 
 gcloud config set project "$PROJECT_ID"
 gcloud services enable \
+  aiplatform.googleapis.com \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
   compute.googleapis.com \
   container.googleapis.com \
-  dns.googleapis.com
+  dns.googleapis.com \
+  iamcredentials.googleapis.com
 ```
 
-If you use Gemini through Vertex AI instead of a Gemini API key, also enable `aiplatform.googleapis.com` and configure Workload Identity for LiteLLM. The simpler Google AI Studio API-key path is shown below.
+These instructions use Vertex AI through Workload Identity for the default Gemini alias. A separate Google AI Studio API-key alias is also configured for deployments that prefer that route.
 
 ### 2. Create the GKE cluster and install Kata Containers
 
@@ -222,14 +224,28 @@ kubectl get runtimeclass kata-qemu
 kubectl -n kube-system rollout status daemonset/kata-deploy --timeout=10m
 ```
 
+Enable Workload Identity Federation and the GKE metadata server. LiteLLM uses this
+identity to call Vertex AI without a long-lived Google service-account key:
+
+```bash
+gcloud container clusters update "$CLUSTER_NAME" \
+  --zone "$ZONE" \
+  --workload-pool="${PROJECT_ID}.svc.id.goog"
+
+gcloud container node-pools update default-pool \
+  --cluster "$CLUSTER_NAME" \
+  --zone "$ZONE" \
+  --workload-metadata=GKE_METADATA
+```
+
 The upstream example currently pins Kata `3.2.0`. Review and pin a newer tested release deliberately before upgrading; changing the runtime on a live sandbox node pool should be treated as an infrastructure upgrade.
 
 ### 3. Install Agent Sandbox and the Kata sandbox template
 
-This fork calls the `v1beta1` Agent Sandbox APIs. Release `v0.5.5` serves `v1beta1` and includes the extensions controller used by `SandboxTemplate`:
+This fork calls the `v1beta1` Agent Sandbox APIs. The tested `v0.5.3` release serves `v1beta1` and includes the extensions controller used by `SandboxTemplate`:
 
 ```bash
-export AGENT_SANDBOX_VERSION="v0.5.5"
+export AGENT_SANDBOX_VERSION="v0.5.3"
 
 kubectl apply -f \
   "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${AGENT_SANDBOX_VERSION}/sandbox-with-extensions.yaml"
@@ -288,19 +304,44 @@ kubectl -n "$PLATFORM_NAMESPACE" create secret generic litellm-postgres \
   --from-literal=postgres-password="$LITELLM_DB_PASSWORD" \
   --from-literal=password="$LITELLM_DB_PASSWORD"
 
+export LITELLM_GSA="alephat-litellm@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud iam service-accounts describe "$LITELLM_GSA" >/dev/null 2>&1 || \
+  gcloud iam service-accounts create alephat-litellm \
+    --display-name="Alephat LiteLLM Vertex AI"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${LITELLM_GSA}" \
+  --role=roles/aiplatform.user \
+  --condition=None
+gcloud iam service-accounts add-iam-policy-binding "$LITELLM_GSA" \
+  --role=roles/iam.workloadIdentityUser \
+  --member="serviceAccount:${PROJECT_ID}.svc.id.goog[${PLATFORM_NAMESPACE}/alephat-litellm]"
+
+kubectl -n "$PLATFORM_NAMESPACE" create serviceaccount alephat-litellm \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$PLATFORM_NAMESPACE" annotate serviceaccount alephat-litellm \
+  "iam.gke.io/gcp-service-account=${LITELLM_GSA}" --overwrite
+
 helm upgrade --install alephat-platform \
   oci://ghcr.io/berriai/litellm-helm \
   --namespace "$PLATFORM_NAMESPACE" \
   --version 1.90.2 \
-  --values deploy/k8s/litellm-values.yaml
+  --values deploy/k8s/litellm-values.yaml \
+  --set-string postgresql.auth.password="$LITELLM_DB_PASSWORD" \
+  --set-string postgresql.auth.postgresPassword="$LITELLM_DB_PASSWORD" \
+  --set serviceAccount.name=alephat-litellm \
+  --set-string envVars.VERTEXAI_PROJECT="$PROJECT_ID" \
+  --set-string envVars.VERTEXAI_LOCATION="$REGION"
 
 kubectl -n "$PLATFORM_NAMESPACE" rollout status \
   deployment/alephat-platform-litellm --timeout=10m
 ```
 
-The values file creates logical aliases that match the dashboard model IDs and routes them to OpenAI, Anthropic, and Gemini. Provider model names change over time and differ by account; update each `litellm_params.model` to a model enabled for your account. `DEFAULT_MODEL` in `deploy/k8s/configmap.yaml` must match one of the `model_name` aliases. See the official [LiteLLM provider examples](https://docs.litellm.ai/) and [Kubernetes production guide](https://docs.litellm.ai/docs/proxy/deploy).
+The values file creates logical aliases that match the dashboard model IDs and routes them to OpenAI, Anthropic, the Gemini API, and Vertex AI Gemini. The default `gemini-5.6-flash` alias uses Vertex AI through Workload Identity; `google:gemini-3.5-flash` demonstrates the API-key route. Provider model names change over time and differ by account; update each `litellm_params.model` to a model enabled for your account. `DEFAULT_MODEL` in `deploy/k8s/configmap.yaml` must match one of the `model_name` aliases. The explicit PostgreSQL password flags are required because the pinned LiteLLM chart generates an internal proxy credential in addition to consuming `litellm-postgres`; both must contain the same value. See the official [LiteLLM provider examples](https://docs.litellm.ai/) and [Kubernetes production guide](https://docs.litellm.ai/docs/proxy/deploy).
 
 This getting-started deployment gives LiteLLM its own bundled PostgreSQL instance. Alephat uses a different PostgreSQL StatefulSet in the next step. For production, use separate Cloud SQL databases and Redis if you run multiple LiteLLM replicas; do not share schemas or credentials between LiteLLM and Alephat.
+
+The pinned LiteLLM chart still references a retired Bitnami PostgreSQL tag, so the values file points that exact tag at the Bitnami Legacy archive. Legacy images receive no updates; use Cloud SQL or a currently supported PostgreSQL chart/image for a production installation.
 
 Test the gateway from inside the cluster with any configured alias:
 
