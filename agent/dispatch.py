@@ -120,7 +120,7 @@ async def create_durable_run(
     stream_resumable: bool | None = None,
     after_seconds: int | float | None = None,
 ) -> Run:
-    """Create a run with Open SWE's durable LangGraph defaults."""
+    """Create a run with Alephat's durable LangGraph defaults."""
     client = client or dispatch_client()
     create_kwargs: dict[str, Any] = {
         "input": input,

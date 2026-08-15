@@ -1,4 +1,4 @@
-from openswe_platform.common.messaging import (
+from alephat_platform.common.messaging import (
     control_subject,
     enqueue_subject,
     envelope,

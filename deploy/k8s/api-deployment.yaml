@@ -1,116 +1,116 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openswe-api
-  namespace: openswe
+  name: alephat-api
+  namespace: alephat
   labels:
-    app: openswe-api
+    app: alephat-api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: openswe-api
+      app: alephat-api
   template:
     metadata:
       labels:
-        app: openswe-api
+        app: alephat-api
     spec:
       initContainers:
         - name: migrate
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
-          command: ["python", "-m", "openswe_platform.migrate"]
+          command: ["python", "-m", "alephat_platform.migrate"]
           env:
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_URL
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_HOST
             - name: DATABASE_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_NAME
             - name: DATABASE_USER
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_USER
       containers:
         - name: api
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
-          command: ["uvicorn", "openswe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
+          command: ["uvicorn", "alephat_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
           ports:
             - containerPort: 8080
               name: http
           envFrom:
             - configMapRef:
-                name: openswe-config
+                name: alephat-config
           env:
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: SERVICE_NAME
               value: api
             - name: PLATFORM_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: PLATFORM_API_TOKEN
                   optional: true
             - name: PLATFORM_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: PLATFORM_JWT_SECRET
                   optional: true
             - name: GITHUB_APP_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_CLIENT_ID
             - name: GITHUB_APP_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_CLIENT_SECRET
             - name: GITHUB_APP_ID
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_ID
             - name: GITHUB_APP_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_PRIVATE_KEY
             - name: GITHUB_APP_INSTALLATION_ID
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_INSTALLATION_ID
             - name: DASHBOARD_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: DASHBOARD_JWT_SECRET
             - name: TOKEN_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: TOKEN_ENCRYPTION_KEY
           readinessProbe:
             httpGet:
@@ -135,11 +135,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: openswe-api
-  namespace: openswe
+  name: alephat-api
+  namespace: alephat
 spec:
   selector:
-    app: openswe-api
+    app: alephat-api
   ports:
     - name: http
       port: 80

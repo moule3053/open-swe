@@ -28,8 +28,8 @@ _GITHUB_API_BASE = GITHUB_API_BASE
 # excluded: they're rarely a code problem the agent can fix.
 FAILING_CONCLUSIONS: frozenset[str] = frozenset(["failure", "timed_out", "action_required"])
 
-# Check runs Open SWE itself produces; never treat them as fixable CI.
-_OPEN_SWE_CHECK_NAMES: frozenset[str] = frozenset([REVIEW_CHECK_RUN_NAME, "Open SWE Auto-fix"])
+# Check runs Alephat itself produces; never treat them as fixable CI.
+_ALEPHAT_CHECK_NAMES: frozenset[str] = frozenset([REVIEW_CHECK_RUN_NAME, "Alephat Auto-fix"])
 
 
 class FailingCheck(dict):
@@ -64,7 +64,7 @@ async def list_failing_check_runs(
         if not isinstance(run, dict):
             continue
         name = run.get("name") or ""
-        if name in _OPEN_SWE_CHECK_NAMES:
+        if name in _ALEPHAT_CHECK_NAMES:
             continue
         if run.get("status") != "completed":
             continue

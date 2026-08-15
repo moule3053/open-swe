@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: openswe-harness
+  name: alephat-harness
   namespace: alephat
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: openswe-agent-sandbox
+  name: alephat-agent-sandbox
   namespace: alephat-sandboxes
 rules:
   - apiGroups: ["extensions.agents.x-k8s.io"]
@@ -23,13 +23,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: openswe-harness-agent-sandbox
+  name: alephat-harness-agent-sandbox
   namespace: alephat-sandboxes
 subjects:
   - kind: ServiceAccount
-    name: openswe-harness
+    name: alephat-harness
     namespace: alephat
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: openswe-agent-sandbox
+  name: alephat-agent-sandbox

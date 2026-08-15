@@ -447,7 +447,7 @@ async def create_review_comment(
 
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 # Inline comments the reviewer posts carry this hidden marker (see reviewer_publish).
-_OPEN_SWE_COMMENT_RE = re.compile(r"<!--\s*open-swe-review-comment\b")
+_ALEPHAT_COMMENT_RE = re.compile(r"<!--\s*alephat-review-comment\b")
 _REVIEW_COMMENTS_PER_PAGE = 100
 # Bound the fetch so a pathological PR can't trigger unbounded paging (~2000 comments).
 _MAX_REVIEW_COMMENT_PAGES = 20
@@ -477,7 +477,7 @@ def _normalize_review_comment(item: dict[str, Any]) -> dict[str, Any]:
         "body": _clean_comment_body(body),
         "html_url": item.get("html_url") if isinstance(item.get("html_url"), str) else "",
         "created_at": item.get("created_at") if isinstance(item.get("created_at"), str) else "",
-        "is_open_swe": bool(_OPEN_SWE_COMMENT_RE.search(body)),
+        "is_alephat": bool(_ALEPHAT_COMMENT_RE.search(body)),
         # GitHub nulls `position` when the line no longer appears in the current
         # diff — i.e. the comment is outdated and can't be rendered inline.
         "is_outdated": not isinstance(item.get("position"), int),
@@ -488,7 +488,7 @@ async def list_review_comments(owner: str, repo: str, pr_number: int) -> dict[st
     """List inline review comments on a PR (newest first), normalized for the UI.
 
     Surfaces every inline comment on the PR — including humans' — not just the
-    reviewer's findings. ``is_open_swe`` flags the reviewer's own (marker-bearing)
+    reviewer's findings. ``is_alephat`` flags the reviewer's own (marker-bearing)
     comments so the UI can separate them from other people's. Pages through the
     full list (bounded by ``_MAX_REVIEW_COMMENT_PAGES``) so older comments aren't
     silently dropped.

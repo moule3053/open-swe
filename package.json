@@ -1,5 +1,5 @@
 {
-  "name": "open-swe",
+  "name": "alephat",
   "private": true,
   "scripts": {
     "dev:mock": "bash tests/e2e/dev-mock.sh"

@@ -191,9 +191,9 @@ async def slack_interactivity(
         common.logger.exception("Failed to parse Slack interactivity payload")
         return {"status": "error", "message": "Invalid payload"}
 
-    action = _first_open_swe_option_action(payload.get("actions"))
+    action = _first_alephat_option_action(payload.get("actions"))
     if action is None:
-        return {"status": "ignored", "reason": "No Open SWE action"}
+        return {"status": "ignored", "reason": "No Alephat action"}
 
     try:
         action_value = common.json.loads(str(action.get("value") or "{}"))
@@ -247,7 +247,7 @@ async def slack_interactivity(
         await common.post_slack_thread_reply(
             channel_id=channel_id,
             thread_ts=thread_ts,
-            text=f"Workflow push approved for fingerprint `{fingerprint}`. Open SWE will retry the blocked push.",
+            text=f"Workflow push approved for fingerprint `{fingerprint}`. Alephat will retry the blocked push.",
         )
         channel_context = await common._get_slack_channel_context(channel_id)
         repo_config = await common.get_slack_repo_config(
@@ -325,7 +325,7 @@ async def slack_interactivity(
 
         return {"status": "accepted", "message": "Reply to revise the plan"}
 
-    if action_value.get("type") != "open_swe_option":
+    if action_value.get("type") != "alephat_option":
         return {"status": "ignored", "reason": "Unknown action type"}
 
     response = str(action_value.get("response") or "").strip()
@@ -367,11 +367,11 @@ async def slack_interactivity(
     return {"status": "accepted", "message": "Slack option queued"}
 
 
-def _first_open_swe_option_action(actions: common.Any) -> dict[str, common.Any] | None:
+def _first_alephat_option_action(actions: common.Any) -> dict[str, common.Any] | None:
     if not isinstance(actions, list):
         return None
     for action in actions:
-        if isinstance(action, dict) and action.get("action_id") == "open_swe_option_select":
+        if isinstance(action, dict) and action.get("action_id") == "alephat_option_select":
             return action
     return None
 

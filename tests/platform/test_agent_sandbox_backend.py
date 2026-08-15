@@ -8,10 +8,10 @@ from deepagents.backends.protocol import FILE_NOT_FOUND, INVALID_PATH
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage
 
-from openswe_platform.harness import agents
-from openswe_platform.harness.agent_sandbox_backend import AgentSandboxBackend
-from openswe_platform.harness.agents import RunContext, get_agent
-from openswe_platform.harness.sandboxes import AgentSandboxProvider, SandboxRef
+from alephat_platform.harness import agents
+from alephat_platform.harness.agent_sandbox_backend import AgentSandboxBackend
+from alephat_platform.harness.agents import RunContext, get_agent
+from alephat_platform.harness.sandboxes import AgentSandboxProvider, SandboxRef
 
 
 @pytest.mark.asyncio

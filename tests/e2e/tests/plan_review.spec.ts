@@ -6,7 +6,7 @@ import {
 } from "@playwright/test";
 
 // Full plan-review flow, driven through the mock Slack UI + the real dashboard:
-//   user asks Open SWE in Slack to PLAN something ->
+//   user asks Alephat in Slack to PLAN something ->
 //   agent calls enter_plan_mode, posts the plan-review link to Slack, writes the
 //   plan as a markdown file (save_plan), and posts "ready" back to Slack ->
 //   owner (user1) and a collaborator (user2) open the plan and leave whole-document
@@ -105,14 +105,14 @@ test.describe("Plan review (HTTP comments)", () => {
     await expect(loggedOut).toHaveURL(
       new RegExp(`/login\\?redirect=.*${threadId}.*plan`),
     );
-    await expect(loggedOut.getByText("Sign in to open-swe")).toBeVisible({
+    await expect(loggedOut.getByText("Sign in to alephat")).toBeVisible({
       timeout: 30_000,
     });
     await loggedOut.getByRole("link", { name: "Continue with GitHub" }).click();
     await expect(loggedOut).toHaveURL(/\/fake-gh\/login\/oauth\/authorize/);
     await expect(loggedOut.getByTestId("fake-github-login")).toBeVisible();
     await loggedOut.getByLabel("GitHub user").selectOption(OWNER.login);
-    await loggedOut.getByRole("button", { name: "Authorize open-swe" }).click();
+    await loggedOut.getByRole("button", { name: "Authorize alephat" }).click();
     await expect(loggedOut).toHaveURL(new RegExp(`/agents/${threadId}/plan$`));
     await expect(loggedOut.getByTestId("plan-review")).toBeVisible({
       timeout: 30_000,

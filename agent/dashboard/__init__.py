@@ -1,4 +1,4 @@
-"""Dashboard backend: OAuth, profiles, and admin endpoints for the open-swe UI.
+"""Dashboard backend: OAuth, profiles, and admin endpoints for the alephat UI.
 
 ``router`` is loaded lazily (PEP 562): importing any dashboard submodule
 (e.g. ``agent.dashboard.options`` from middleware) executes this __init__,

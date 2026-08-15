@@ -68,7 +68,7 @@ def _config(**overrides: Any) -> dict[str, Any]:
         "configurable": {
             "thread_id": "test-thread-123",
             "source": "slack",
-            "repo": {"owner": "langchain-ai", "name": "open-swe"},
+            "repo": {"owner": "langchain-ai", "name": "alephat"},
             "slack_thread": {"channel_id": "C1", "thread_ts": "1.0"},
             "github_login": "johannes117",
             "user_email": "johannes@example.com",
@@ -152,7 +152,7 @@ async def test_schedule_thread_wakeup_creates_cron(monkeypatch: pytest.MonkeyPat
     assert captured["prompt"] == "Check CI status"
     assert captured["configurable"]["thread_id"] == "test-thread-123"
     assert captured["configurable"]["source"] == "slack"
-    assert captured["configurable"]["repo"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert captured["configurable"]["repo"] == {"owner": "langchain-ai", "name": "alephat"}
     assert captured["configurable"]["slack_thread"] == {"channel_id": "C1", "thread_ts": "1.0"}
     assert captured["configurable"]["github_login"] == "johannes117"
 

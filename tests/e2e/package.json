@@ -1,5 +1,5 @@
 {
-  "name": "open-swe-e2e",
+  "name": "alephat-e2e",
   "private": true,
   "description": "Playwright E2E tests driving mock GitHub/Slack control panels against the real webhook routes.",
   "scripts": {

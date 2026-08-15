@@ -34,7 +34,7 @@ async def _resolve_pr_author_token() -> tuple[str | None, str]:
     Prefers the triggering user's OAuth token (so the PR is created *as them*)
     for Slack/Linear/dashboard runs with a mapped GitHub login, resolving it by
     login from the dashboard OAuth store. Falls back to the GitHub App
-    installation token (creator = open-swe[bot]) for GitHub-triggered runs,
+    installation token (creator = alephat[bot]) for GitHub-triggered runs,
     unmapped users, or bot-token-only deployments — preserving today's behavior.
 
     The token is resolved by login rather than read from the shared thread
@@ -51,7 +51,7 @@ async def _resolve_pr_author_token() -> tuple[str | None, str]:
         user_token = await get_valid_access_token(github_login.strip())
         if user_token:
             return user_token, "user"
-        logger.info("No valid user token for %s; opening PR as open-swe[bot]", github_login.strip())
+        logger.info("No valid user token for %s; opening PR as alephat[bot]", github_login.strip())
 
     return await get_github_app_installation_token(), "bot"
 
@@ -206,13 +206,13 @@ def _access_failure_payload(
         http_status=http_status,
         reason=reason,
         likely_cause=(
-            "the Open SWE GitHub App or PR author token is not installed on, granted access "
+            "the Alephat GitHub App or PR author token is not installed on, granted access "
             "to, or able to see this repository or one of the PR branches"
         ),
         suggested_action=(
-            "install or grant the Open SWE GitHub App and the triggering user's GitHub "
+            "install or grant the Alephat GitHub App and the triggering user's GitHub "
             "authorization access to this repository, verify the base/head branches exist, "
-            "then ask Open SWE to retry opening the PR"
+            "then ask Alephat to retry opening the PR"
         ),
         branch_pushed=branch_pushed,
         failed_step=failed_step,
@@ -248,8 +248,8 @@ def _branch_failure_payload(
             "to the PR author token"
         ),
         suggested_action=(
-            f"push or restore the {branch_role} branch `{branch}`, ensure the Open SWE "
-            "GitHub App/token can see it, then ask Open SWE to retry opening the PR"
+            f"push or restore the {branch_role} branch `{branch}`, ensure the Alephat "
+            "GitHub App/token can see it, then ask Alephat to retry opening the PR"
         ),
         branch_pushed=branch_pushed,
         failed_step=f"preflight_{branch_role}_branch",
@@ -640,7 +640,7 @@ async def _open_pull_request(
             http_status=None,
             reason="No GitHub token was available to open the pull request",
             likely_cause="the triggering user is not authorized and no GitHub App token is available",
-            suggested_action="connect GitHub authorization or install/grant the Open SWE GitHub App, then retry",
+            suggested_action="connect GitHub authorization or install/grant the Alephat GitHub App, then retry",
             branch_pushed=None,
             failed_step="resolve_pr_author_token",
         )
@@ -757,7 +757,7 @@ async def open_pull_request(
     """Open a draft GitHub pull request attributed to the triggering user.
 
     Use this to OPEN a NEW pull request (instead of `gh pr create`) so the PR is
-    created as the person who triggered the run rather than open-swe[bot]. Push
+    created as the person who triggered the run rather than alephat[bot]. Push
     your branch with `git push origin <branch>` BEFORE calling this.
 
     For everything else — updating an existing PR, marking it ready for review,
@@ -767,7 +767,7 @@ async def open_pull_request(
 
     Args:
         owner: Repository owner/org (e.g. "langchain-ai").
-        repo: Repository name (e.g. "open-swe").
+        repo: Repository name (e.g. "alephat").
         head: The branch with your changes (already pushed to origin).
         base: The branch you want to merge into (e.g. "main").
         title: PR title.

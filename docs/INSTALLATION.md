@@ -1,12 +1,12 @@
 
 # Installation Guide
 
-This guide walks you through setting up Open SWE end-to-end: local development, GitHub App creation, LangSmith configuration, webhooks, the web dashboard, and production deployment.
+This guide walks you through setting up Alephat end-to-end: local development, GitHub App creation, LangSmith configuration, webhooks, the web dashboard, and production deployment.
 
-Open SWE has two runnable pieces:
+Alephat has two runnable pieces:
 
 - **The backend** — a LangGraph app (three graphs: `agent`, `reviewer`, `analyzer`) plus a FastAPI app (`agent.webapp:app`) that owns the webhooks and the dashboard API. Both are served together by `langgraph dev`.
-- **The dashboard** — a TanStack Start + Vite web app in `ui/` (package name `open-swe-dashboard`). It's a thin client over the FastAPI dashboard API (`/dashboard/api/*`): GitHub-login, per-user model/profile settings, team defaults, enabled-repo and review-style management, user mappings, and the Agents chat UI. It's optional for pure webhook-driven use, but recommended.
+- **The dashboard** — a TanStack Start + Vite web app in `ui/` (package name `alephat-dashboard`). It's a thin client over the FastAPI dashboard API (`/dashboard/api/*`): GitHub-login, per-user model/profile settings, team defaults, enabled-repo and review-style management, user mappings, and the Agents chat UI. It's optional for pure webhook-driven use, but recommended.
 
 > **The steps are ordered to avoid forward references.** Each step only depends on things you've already completed.
 
@@ -21,8 +21,8 @@ Open SWE has two runnable pieces:
 ## 1. Clone and install
 
 ```bash
-git clone https://github.com/langchain-ai/open-swe.git
-cd open-swe
+git clone https://github.com/moule3053/alephat.git
+cd alephat
 uv venv
 source .venv/bin/activate
 uv sync --all-extras
@@ -44,7 +44,7 @@ Copy the HTTPS URL you set, or if you didn't pass `--url`, the one ngrok gives y
 
 ## 3. Create a GitHub App
 
-Open SWE authenticates as a [GitHub App](https://docs.github.com/en/apps/creating-github-apps) to clone repos, push branches, and open PRs.
+Alephat authenticates as a [GitHub App](https://docs.github.com/en/apps/creating-github-apps) to clone repos, push branches, and open PRs.
 
 ### 3a. Choose your OAuth provider ID
 
@@ -60,8 +60,8 @@ Write this down. You'll use it in the callback URL below and again in step 4 whe
 
 1. Go to **GitHub Settings → Developer settings → [GitHub Apps](https://github.com/settings/apps) → [New GitHub App](https://github.com/settings/apps/new)**
 2. Fill in:
-   - **App name**: `open-swe` (or your preferred name)
-   - **Homepage URL**: This can be any valid URL — it's only shown on the GitHub Marketplace page (which you won't be using). Use something like `https://github.com/langchain-ai/open-swe`
+   - **App name**: `alephat` (or your preferred name)
+   - **Homepage URL**: This can be any valid URL — it's only shown on the GitHub Marketplace page (which you won't be using). Use something like `https://github.com/moule3053/alephat`
    - **Callback URL**: GitHub Apps allow multiple callback URLs (one per line). Add **both**:
      1. `https://smith.langchain.com/host-oauth-callback/<your-provider-id>` — replace `<your-provider-id>` with the ID you chose in step 3a (e.g. `https://smith.langchain.com/host-oauth-callback/your-org-github-oauth`). This is the **agent-runtime** OAuth callback, brokered by LangSmith (step 4b).
      2. `http://localhost:2024/dashboard/api/auth/callback` — the **dashboard-login** OAuth callback (step 8). For production, also add `https://<your-dashboard-api-url>/dashboard/api/auth/callback`. This is a separate, direct GitHub OAuth flow (not via LangSmith), so it needs its own callback URL.
@@ -76,10 +76,10 @@ Write this down. You'll use it in the callback URL below and again in step 4 whe
      - Contents: Read & write
      - Pull requests: Read & write
      - Issues: Read & write
-     - Checks: Read & write — reports an "Open SWE Review" check run on PRs while an auto-review runs, and reads third-party CI conclusions for the auto-fix flow (it watches failing checks on agent-authored PRs and pushes fixes). Without it, check-run creation fails (logged, best-effort) but reviews still work, and CI auto-fix is disabled.
+     - Checks: Read & write — reports an "Alephat Review" check run on PRs while an auto-review runs, and reads third-party CI conclusions for the auto-fix flow (it watches failing checks on agent-authored PRs and pushes fixes). Without it, check-run creation fails (logged, best-effort) but reviews still work, and CI auto-fix is disabled.
      - Commit statuses: Read-only — only needed if you enable the `Status` event below; the CI auto-fix flow reads the legacy combined commit-status API for integrations that report via statuses instead of check runs. Without it, status-based CI is silently ignored (logged as "Failed to read combined status").
-     - Actions: Read-only — optional; lets Open SWE's sandbox proxy tokens download GitHub Actions workflow/job logs when troubleshooting CI failures. Do **not** grant Actions write for log access: write permission also allows rerunning, canceling, and deleting workflow runs, which is unnecessary for diagnostics.
-     - Workflows: Read & write — required to let Open SWE directly push branches containing explicitly requested GitHub Actions workflow changes.
+     - Actions: Read-only — optional; lets Alephat's sandbox proxy tokens download GitHub Actions workflow/job logs when troubleshooting CI failures. Do **not** grant Actions write for log access: write permission also allows rerunning, canceling, and deleting workflow runs, which is unnecessary for diagnostics.
+     - Workflows: Read & write — required to let Alephat directly push branches containing explicitly requested GitHub Actions workflow changes.
      - Metadata: Read-only
    - **Organization permissions** (required only if you plan to set `ALLOWED_GITHUB_ORGS` — see step 5 / Security):
      - Members: Read-only — used to verify org membership for the dashboard-login gate via `GET /orgs/{org}/memberships/{username}`. Without this permission that call returns 403, the check fails closed, and **every** dashboard login is rejected.
@@ -108,7 +108,7 @@ After creating the app:
 
 1. From your app's settings page, click **Install App** in the sidebar
 2. Select your org or personal account
-3. Choose which repositories Open SWE should have access to
+3. Choose which repositories Alephat should have access to
 4. Click **Install**
 5. After installation, look at the URL in your browser — it will look like:
    ```
@@ -124,7 +124,7 @@ After creating the app:
 
 ## 4. Set up LangSmith
 
-Open SWE uses [LangSmith](https://smith.langchain.com/) for:
+Alephat uses [LangSmith](https://smith.langchain.com/) for:
 - **Tracing**: all agent runs are logged for debugging and observability
 - **Sandboxes**: each task runs in an isolated LangSmith cloud sandbox
 
@@ -136,7 +136,7 @@ Open SWE uses [LangSmith](https://smith.langchain.com/) for:
 4. Get your **Tenant ID**: Visit LangSmith, login, then copy the UUID in the URL. Example: if your URL is `https://smith.langchain.com/o/72184268-01ea-4d29-98cc-6cfcf0f2abb0/agents/chat` -> the tenant ID would be `72184268-01ea-4d29-98cc-6cfcf0f2abb0`. Save it as `LANGSMITH_TENANT_ID_PROD`.
 5. Get your **Project ID**: open your tracing project in LangSmith, then click on the **ID** button in the top left, directly next to the project name. Save it as `LANGSMITH_TRACING_PROJECT_ID_PROD`
 
-> **Note on per-graph tracing projects.** The graphs trace into separate projects by name — `open-swe-agent` (main agent) and `open-swe-review` (reviewer/analyzer). "View trace" links resolve the correct project ID from these names automatically (via the `LANGSMITH_API_KEY_PROD` client), so make sure projects with these names exist in your tenant. If a name can't be resolved, links fall back to `LANGSMITH_TRACING_PROJECT_ID_PROD`, so set it to whichever project you want links to point at by default.
+> **Note on per-graph tracing projects.** The graphs trace into separate projects by name — `alephat-agent` (main agent) and `alephat-review` (reviewer/analyzer). "View trace" links resolve the correct project ID from these names automatically (via the `LANGSMITH_API_KEY_PROD` client), so make sure projects with these names exist in your tenant. If a name can't be resolved, links fall back to `LANGSMITH_TRACING_PROJECT_ID_PROD`, so set it to whichever project you want links to point at by default.
 
 ### 4b. Configure GitHub OAuth (optional but recommended)
 
@@ -157,7 +157,7 @@ To set up per-user OAuth:
 
 ### 4c. Sandbox snapshots
 
-LangSmith sandboxes provide the isolated execution environment for each agent run. Open SWE boots each sandbox from a pre-built **snapshot** — you build the snapshot once (from a Docker image) and then reference it by UUID.
+LangSmith sandboxes provide the isolated execution environment for each agent run. Alephat boots each sandbox from a pre-built **snapshot** — you build the snapshot once (from a Docker image) and then reference it by UUID.
 
 (Optional) Build and Push a custom Docker Image to Docker hub
 First build and push the sandbox Docker image to a registry LangSmith can pull from. On Apple Silicon, force `linux/amd64`
@@ -185,8 +185,8 @@ from langsmith.sandbox import SandboxClient
 
 client = SandboxClient(api_key="<your key>")
 snapshot = client.create_snapshot(
-    name="open-swe",
-    docker_image="johanneslangchain/open-swe-sandbox:gh-cli-amd64",  # built from ./Dockerfile
+    name="alephat",
+    docker_image="johanneslangchain/alephat-sandbox:gh-cli-amd64",  # built from ./Dockerfile
     fs_capacity_bytes=128 * 1024**3,
 )
 print(snapshot.id)
@@ -196,8 +196,8 @@ You can also use the helper script:
 
 ```bash
 uv run python scripts/create_sandbox_snapshot.py \
-  --name open-swe-gh-cli-amd64 \
-  --image johanneslangchain/open-swe-sandbox:gh-cli-amd64
+  --name alephat-gh-cli-amd64 \
+  --image johanneslangchain/alephat-sandbox:gh-cli-amd64
 ```
 
 Then set the resulting UUID in your environment:
@@ -218,25 +218,25 @@ DEFAULT_SANDBOX_DELETE_AFTER_STOP_SECONDS="1209600"
 REPO_SNAPSHOT_BASE_IMAGE="<your-docker-hub>/<name-of-your-image>"
 ```
 
-`DEFAULT_SANDBOX_SNAPSHOT_ID` is required when `SANDBOX_TYPE=langsmith`. The server validates this at startup and refuses to boot if it's missing. The snapshot should include the GitHub CLI from the project Dockerfile; Open SWE authenticates `git` and `gh` through the LangSmith sandbox proxy using runtime-minted GitHub App installation tokens, not deployment-stored GitHub access tokens.
+`DEFAULT_SANDBOX_SNAPSHOT_ID` is required when `SANDBOX_TYPE=langsmith`. The server validates this at startup and refuses to boot if it's missing. The snapshot should include the GitHub CLI from the project Dockerfile; Alephat authenticates `git` and `gh` through the LangSmith sandbox proxy using runtime-minted GitHub App installation tokens, not deployment-stored GitHub access tokens.
 
-`REPO_SNAPSHOT_BASE_IMAGE` should point at the same published Open SWE sandbox image you used to create the default snapshot (for example, the image built from `./Dockerfile`). The admin **Repository Snapshots** page uses it as the `FROM` line when generating per-repo Dockerfile templates. If it is not set, template generation is intentionally disabled so admins do not accidentally build repo-scoped snapshots from a bare image that lacks Open SWE's required tools (`git`, `gh`, `sfw`, language runtimes, and proxy assumptions).
+`REPO_SNAPSHOT_BASE_IMAGE` should point at the same published Alephat sandbox image you used to create the default snapshot (for example, the image built from `./Dockerfile`). The admin **Repository Snapshots** page uses it as the `FROM` line when generating per-repo Dockerfile templates. If it is not set, template generation is intentionally disabled so admins do not accidentally build repo-scoped snapshots from a bare image that lacks Alephat's required tools (`git`, `gh`, `sfw`, language runtimes, and proxy assumptions).
 
 ## 5. Set up triggers
 
-Open SWE can be triggered from GitHub, Linear, and/or Slack. **Configure whichever surfaces your team uses — you don't need all of them.**
+Alephat can be triggered from GitHub, Linear, and/or Slack. **Configure whichever surfaces your team uses — you don't need all of them.**
 
 ### GitHub
 
 GitHub triggering works automatically once your GitHub App is set up (step 3). Users can:
-- Tag `@openswe` in issue titles or bodies to start a task
-- Tag `@openswe` in issue comments for follow-up instructions
-- Tag `@openswe` in PR review comments to have it address review feedback
+- Tag `@alephat` in issue titles or bodies to start a task
+- Tag `@alephat` in issue comments for follow-up instructions
+- Tag `@alephat` in PR review comments to have it address review feedback
 
 Which GitHub users can trigger the agent is controlled by the **user mapping** (GitHub login ⇄ work email ⇄ optional Slack ID), stored in the LangGraph Store rather than in code. Manage it in the dashboard under **Admin → User mappings**:
 
 - **Add / update** a single mapping (GitHub login + work email, plus an optional Slack user ID). The list is paged (20 per page).
-- Users can also **self-onboard**: when an unmapped person tags Open SWE in Slack, the agent runs with limited (GitHub App installation) permissions and posts a "link your GitHub account" prompt. Completing the org-gated GitHub OAuth login records a `self` mapping (carrying the originating Slack ID and work email). Self-signup is therefore bounded by the same `ALLOWED_GITHUB_ORGS` gate as dashboard login.
+- Users can also **self-onboard**: when an unmapped person tags Alephat in Slack, the agent runs with limited (GitHub App installation) permissions and posts a "link your GitHub account" prompt. Completing the org-gated GitHub OAuth login records a `self` mapping (carrying the originating Slack ID and work email). Self-signup is therefore bounded by the same `ALLOWED_GITHUB_ORGS` gate as dashboard login.
 
 You should also configure which GitHub organizations and/or repositories the agent is allowed to operate on. You can specify allowed orgs, specific `owner/repo` pairs, or both:
 
@@ -256,13 +256,13 @@ A GitHub or Linear webhook is accepted if the resolved repo's org is in `ALLOWED
 
 ### Linear (optional)
 
-Open SWE listens for Linear comments that mention `@openswe`.
+Alephat listens for Linear comments that mention `@alephat`.
 
 **Create a webhook:**
 
 1. In Linear, go to **Settings → API → Webhooks → New webhook**
 2. Fill in:
-   - **Label**: `open-swe`
+   - **Label**: `alephat`
    - **URL**: `https://<your-ngrok-url>/webhooks/linear` — use the ngrok URL from step 2
    - **Secret**: generate with `openssl rand -hex 32` — save this as `LINEAR_WEBHOOK_SECRET`
 3. Under **Data change events**, enable **Comments → Create** only
@@ -271,12 +271,12 @@ Open SWE listens for Linear comments that mention `@openswe`.
 **Get your API key:**
 
 1. Go to **Settings → API → Personal API keys → New API key**
-2. Name it `open-swe`, select **All access**, and copy the key
+2. Name it `alephat`, select **All access**, and copy the key
 3. Save it as `LINEAR_API_KEY`
 
 **Configure team-to-repo mapping:**
 
-Open SWE routes Linear issues to GitHub repos based on the Linear team and project. Edit the mapping in `agent/utils/linear_team_repo_map.py`:
+Alephat routes Linear issues to GitHub repos based on the Linear team and project. Edit the mapping in `agent/utils/linear_team_repo_map.py`:
 
 ```python
 LINEAR_TEAM_TO_REPO = {
@@ -291,7 +291,7 @@ LINEAR_TEAM_TO_REPO = {
 }
 ```
 
-Users can also override the team/project mapping per-comment by including `repo:owner/name` (or a GitHub URL) in their `@openswe` comment. The mapping is used as a fallback when no repo is specified in the comment text.
+Users can also override the team/project mapping per-comment by including `repo:owner/name` (or a GitHub URL) in their `@alephat` comment. The mapping is used as a fallback when no repo is specified in the comment text.
 
 ### Slack (optional)
 
@@ -308,8 +308,8 @@ Users can also override the team/project mapping per-comment by including `repo:
 ```json
 {
     "display_information": {
-        "name": "Open SWE",
-        "description": "Enables Open SWE to interact with your workspace",
+        "name": "Alephat",
+        "description": "Enables Alephat to interact with your workspace",
         "background_color": "#000000"
     },
     "features": {
@@ -319,7 +319,7 @@ Users can also override the team/project mapping per-comment by including `repo:
             "messages_tab_read_only_enabled": false
         },
         "bot_user": {
-            "display_name": "Open SWE",
+            "display_name": "Alephat",
             "always_online": true
         }
     },
@@ -374,7 +374,7 @@ Users can also override the team/project mapping per-comment by including `repo:
 
 **Slack URL checklist:**
 
-Both Slack URLs must point at the Open SWE backend that serves `agent.webapp:app` (locally, your ngrok URL forwarding to `langgraph dev`; in production, your LangGraph/FastAPI deployment URL), not the dashboard frontend URL.
+Both Slack URLs must point at the Alephat backend that serves `agent.webapp:app` (locally, your ngrok URL forwarding to `langgraph dev`; in production, your LangGraph/FastAPI deployment URL), not the dashboard frontend URL.
 
 - **Event Subscriptions → Request URL:** `https://<your-backend-url>/webhooks/slack`
 - **Interactivity & Shortcuts → Interactivity Request URL:** `https://<your-backend-url>/webhooks/slack/interactivity`
@@ -386,7 +386,7 @@ Slack Block Kit option buttons only work when Interactivity is enabled and point
 - `SLACK_BOT_TOKEN`: the Bot User OAuth Token (`xoxb-...`)
 - `SLACK_SIGNING_SECRET`: found under **Basic Information → App Credentials**
 - `SLACK_BOT_USER_ID`: the bot's user ID (find it in Slack by clicking the bot's profile)
-- `SLACK_BOT_USERNAME`: the bot's display name (e.g. `open-swe`)
+- `SLACK_BOT_USERNAME`: the bot's display name (e.g. `alephat`)
 
 **Default repo:**
 
@@ -412,7 +412,7 @@ LANGSMITH_API_KEY_PROD=""              # From step 4a
 LANGCHAIN_TRACING_V2="true"
 LANGCHAIN_PROJECT=""                   # LangSmith project name for traces
 LANGSMITH_TENANT_ID_PROD=""           
-LANGSMITH_TRACING_PROJECT_ID_PROD=""   # Fallback project ID for "View trace" links; graphs trace into the open-swe-agent / open-swe-review projects by name
+LANGSMITH_TRACING_PROJECT_ID_PROD=""   # Fallback project ID for "View trace" links; graphs trace into the alephat-agent / alephat-review projects by name
 LANGSMITH_URL_PROD="https://smith.langchain.com"                 
 
 # === LLM ===
@@ -464,7 +464,7 @@ DEFAULT_REPO_NAME=""                   # Default GitHub repo (e.g. "my-repo")
 
 # === Agent Behavior (optional) ===
 # Todos are hidden from the agent by default. Set true to re-enable the write_todos tool.
-OPEN_SWE_ENABLE_TODOS=""
+ALEPHAT_ENABLE_TODOS=""
 
 # === Dashboard (required to run the web dashboard) ===
 # Public URL that browsers use for /dashboard/api/* and OAuth callbacks.
@@ -510,7 +510,7 @@ EXA_API_KEY=""                         # From https://dashboard.exa.ai
 
 # === Reviewer / Analyzer (optional) ===
 # LangSmith dataset where reviewer finding outcomes are recorded and read back by
-# the analyzer. Defaults to "openswe-reviewer-outcomes" if unset.
+# the analyzer. Defaults to "alephat-reviewer-outcomes" if unset.
 REVIEWER_OUTCOMES_DATASET=""
 # Single GitHub org whose members may trigger the agent on *public* repos.
 # Empty => no public-repo gate (back-compat). Distinct from ALLOWED_GITHUB_ORGS.
@@ -595,7 +595,7 @@ pnpm run dev          # vite dev --port 3000 -> http://localhost:3000
 
 The dashboard needs `VITE_DASHBOARD_API_BASE_URL` in `ui/.env` pointing at the backend for local dev. The file is intentionally untracked because `.env*` files are gitignored.
 
-The client calls `${VITE_DASHBOARD_API_BASE_URL}/dashboard/api/*` with `credentials: "include"`, so the backend's `osw_session` cookie rides along. Because the UI (`:3000`) and API (`:2024`) are different origins, the backend needs **CORS** enabled for the UI origin — set `DASHBOARD_ALLOWED_ORIGINS="http://localhost:3000"` (CORS is off unless this is set). Keep `DASHBOARD_API_BASE_URL` on an `http://` URL locally so the cookie uses `SameSite=Lax` rather than `Secure`.
+The client calls `${VITE_DASHBOARD_API_BASE_URL}/dashboard/api/*` with `credentials: "include"`, so the backend's `alephat_session` cookie rides along. Because the UI (`:3000`) and API (`:2024`) are different origins, the backend needs **CORS** enabled for the UI origin — set `DASHBOARD_ALLOWED_ORIGINS="http://localhost:3000"` (CORS is off unless this is set). Keep `DASHBOARD_API_BASE_URL` on an `http://` URL locally so the cookie uses `SameSite=Lax` rather than `Secure`.
 
 For the dashboard login to succeed, you need (from steps 3c / 6): `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `DASHBOARD_JWT_SECRET`, `DASHBOARD_API_BASE_URL`, `DASHBOARD_BASE_URL`, and `DASHBOARD_ALLOWED_ORIGINS`. To reach the admin pages (user mappings, etc.), add your GitHub login or email to `CONFIGURED_ADMINS`.
 
@@ -606,7 +606,7 @@ Other UI scripts: `pnpm run build`, `pnpm run typecheck`, `pnpm run lint`, `pnpm
 ### GitHub
 
 1. Go to any issue in a repository where the app is installed
-2. Create or comment on an issue with: `@openswe what files are in this repo?`
+2. Create or comment on an issue with: `@alephat what files are in this repo?`
 3. You should see:
    - A 👀 reaction on your comment within a few seconds
    - A new run in your LangSmith project
@@ -615,7 +615,7 @@ Other UI scripts: `pnpm run build`, `pnpm run typecheck`, `pnpm run lint`, `pnpm
 ### Linear
 
 1. Go to any Linear issue in a team you configured in `LINEAR_TEAM_TO_REPO`
-2. Add a comment: `@openswe what files are in this repo?`
+2. Add a comment: `@alephat what files are in this repo?`
 3. You should see:
    - A 👀 reaction on your comment within a few seconds
    - A new run in your LangSmith project
@@ -624,7 +624,7 @@ Other UI scripts: `pnpm run build`, `pnpm run typecheck`, `pnpm run lint`, `pnpm
 ### Slack
 
 1. In any channel where the bot is invited, start a thread
-2. Mention the bot: `@open-swe what's in the repo?`
+2. Mention the bot: `@alephat what's in the repo?`
 3. You should see a reply in the thread with the agent's response.
 
 ### Dashboard
@@ -659,7 +659,7 @@ The `langgraph.json` at the project root defines the three graphs and the HTTP a
 }
 ```
 
-**Dashboard** — the `ui/` app deploys to [Vercel](https://vercel.com/). The recommended production setup uses **same-origin** requests to `/dashboard/api/*` (leave `VITE_DASHBOARD_API_BASE_URL` empty), and `ui/vercel.json` rewrites those to the hosted LangGraph deployment. In this mode, set both `DASHBOARD_API_BASE_URL` and the GitHub App dashboard callback URL to the Vercel/dashboard origin (for example, `https://your-dashboard.vercel.app/dashboard/api/auth/callback`). The OAuth callback response then sets the `osw_session` cookie on the dashboard host, and later same-origin `/dashboard/api/*` requests include it. Update the rewrite `destination` in `ui/vercel.json` to your own LangGraph deployment URL.
+**Dashboard** — the `ui/` app deploys to [Vercel](https://vercel.com/). The recommended production setup uses **same-origin** requests to `/dashboard/api/*` (leave `VITE_DASHBOARD_API_BASE_URL` empty), and `ui/vercel.json` rewrites those to the hosted LangGraph deployment. In this mode, set both `DASHBOARD_API_BASE_URL` and the GitHub App dashboard callback URL to the Vercel/dashboard origin (for example, `https://your-dashboard.vercel.app/dashboard/api/auth/callback`). The OAuth callback response then sets the `alephat_session` cookie on the dashboard host, and later same-origin `/dashboard/api/*` requests include it. Update the rewrite `destination` in `ui/vercel.json` to your own LangGraph deployment URL.
 
 Alternatively, you can run the dashboard as a direct cross-origin client: set `VITE_DASHBOARD_API_BASE_URL` to the hosted backend origin, set `DASHBOARD_API_BASE_URL` to that same backend origin, and include the dashboard origin in `DASHBOARD_ALLOWED_ORIGINS`.
 
@@ -701,8 +701,8 @@ Alternatively, you can run the dashboard as a direct cross-origin client: set `V
 
 ### Agent not responding to comments
 
-- For GitHub: ensure the comment or issue contains `@openswe` (case-insensitive), and the commenter has a user mapping (Admin → User mappings; see "Configure triggering surfaces"). Add any missing user with **Add / update** in that section.
-- For Linear: ensure the comment contains `@openswe` (case-insensitive)
+- For GitHub: ensure the comment or issue contains `@alephat` (case-insensitive), and the commenter has a user mapping (Admin → User mappings; see "Configure triggering surfaces"). Add any missing user with **Add / update** in that section.
+- For Linear: ensure the comment contains `@alephat` (case-insensitive)
 - For Slack: ensure the bot is invited to the channel and the message is an `@mention`
 - Check server logs for webhook processing errors
 

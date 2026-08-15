@@ -3,9 +3,9 @@ from deepagents.backends import StateBackend
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage
 
-from openswe_platform.harness import agents
-from openswe_platform.harness.agents import REGISTRY, RunContext, get_agent
-from openswe_platform.harness.sandboxes import SandboxRef
+from alephat_platform.harness import agents
+from alephat_platform.harness.agents import REGISTRY, RunContext, get_agent
+from alephat_platform.harness.sandboxes import SandboxRef
 
 
 def test_all_agent_types():

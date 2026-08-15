@@ -1,44 +1,44 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: openswe-migrate
-  namespace: openswe
+  name: alephat-migrate
+  namespace: alephat
 spec:
   backoffLimit: 5
   template:
     metadata:
       labels:
-        app: openswe-migrate
+        app: alephat-migrate
     spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
-          command: ["python", "-m", "openswe_platform.migrate"]
+          command: ["python", "-m", "alephat_platform.migrate"]
           env:
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_URL
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_HOST
             - name: DATABASE_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_NAME
             - name: DATABASE_USER
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_USER

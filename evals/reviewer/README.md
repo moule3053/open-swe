@@ -1,6 +1,6 @@
 # Reviewer Eval
 
-Offline LangSmith eval for the Open SWE Reviewer graph against the 50 PRs and
+Offline LangSmith eval for the Alephat Reviewer graph against the 50 PRs and
 136 reference findings from `withmartian/code-review-benchmark`. Examples have
 1–6 references (mean 2.72).
 
@@ -33,7 +33,7 @@ evals/reviewer/
 uv run python -m evals.reviewer.build_dataset --dry-run
 
 # Upload for real
-uv run python -m evals.reviewer.build_dataset --dataset-name openswe-reviewer-v1
+uv run python -m evals.reviewer.build_dataset --dataset-name alephat-reviewer-v1
 ```
 
 Each example carries: `repo`, `pr_number`, `pr_url`, `base_sha`, `head_sha`,
@@ -80,8 +80,8 @@ Required repository config:
 
 ### Tracing project
 
-Eval traces are routed to the **`open-swe-evals`** LangSmith project (set via
-`langsmith_project` in `config.toml`, default `open-swe-evals`) so they stay out
+Eval traces are routed to the **`alephat-evals`** LangSmith project (set via
+`langsmith_project` in `config.toml`, default `alephat-evals`) so they stay out
 of the deployment's production tracing project. The admin-triggered run forces
 the same project via the `LANGSMITH_PROJECT` env var; override the default with
 `EVAL_LANGSMITH_PROJECT`.

@@ -1,9 +1,9 @@
 <div align="center">
-  <a href="https://github.com/langchain-ai/open-swe">
+  <a href="https://github.com/moule3053/alephat">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="assets/dark.svg">
       <source media="(prefers-color-scheme: light)" srcset="assets/light.svg">
-      <img alt="Open SWE Logo" src="assets/dark.svg" width="35%">
+      <img alt="Alephat Logo" src="assets/dark.svg" width="35%">
     </picture>
   </a>
 </div>
@@ -13,31 +13,27 @@
 </div>
 
 <div align="center">
-  <a href="https://opensource.org/licenses/MIT" target="_blank"><img src="https://img.shields.io/github/license/langchain-ai/open-swe" alt="License"></a>
-  <a href="https://github.com/langchain-ai/open-swe/stargazers" target="_blank"><img src="https://img.shields.io/github/stars/langchain-ai/open-swe" alt="GitHub Stars"></a>
+  <a href="https://opensource.org/licenses/MIT" target="_blank"><img src="https://img.shields.io/github/license/moule3053/alephat" alt="License"></a>
+  <a href="https://github.com/moule3053/alephat/stargazers" target="_blank"><img src="https://img.shields.io/github/stars/moule3053/alephat" alt="GitHub Stars"></a>
   <a href="https://github.com/langchain-ai/langgraph" target="_blank"><img src="https://img.shields.io/badge/Built%20on-LangGraph-blue" alt="Built on LangGraph"></a>
   <a href="https://github.com/langchain-ai/deepagents" target="_blank"><img src="https://img.shields.io/badge/Built%20on-Deep%20Agents-blue" alt="Built on Deep Agents"></a>
-  <a href="https://x.com/langchain" target="_blank"><img src="https://img.shields.io/twitter/url/https/twitter.com/langchain.svg?style=social&label=Follow%20%40LangChain" alt="Twitter / X"></a>
 </div>
 
 <br>
 
 Elite engineering orgs like Stripe, Ramp, and Coinbase are building their own internal coding agents — Slackbots, CLIs, and web apps that meet engineers where they already work. These agents are connected to internal systems with the right context, permissioning, and safety boundaries to operate with minimal human oversight.
 
-Open SWE is the open-source version of this pattern. Built on [LangGraph](https://langchain-ai.github.io/langgraph/) and [Deep Agents](https://github.com/langchain-ai/deepagents), it gives you the same architecture those companies built internally: cloud sandboxes, Slack and Linear invocation, subagent orchestration, and automatic PR creation — ready to customize for your own codebase and workflows.
-
-> [!NOTE]
-> 💬 Read the **announcement blog post [here](https://blog.langchain.com/open-swe-an-open-source-framework-for-internal-coding-agents/)**
+Alephat is the open-source version of this pattern. Built on [LangGraph](https://langchain-ai.github.io/langgraph/) and [Deep Agents](https://github.com/langchain-ai/deepagents), it gives you the same architecture those companies built internally: cloud sandboxes, Slack and Linear invocation, subagent orchestration, and automatic PR creation — ready to customize for your own codebase and workflows.
 
 ---
 
 ## Architecture
 
-Open SWE makes the same core architectural decisions as the best internal coding agents. Here's how it maps to the patterns described in [this overview](https://x.com/kishan_dahya/status/2028971339974099317) of Stripe's Minions, Ramp's Inspect, and Coinbase's Cloudbot:
+Alephat makes the same core architectural decisions as the best internal coding agents. Here's how it maps to the patterns described in [this overview](https://x.com/kishan_dahya/status/2028971339974099317) of Stripe's Minions, Ramp's Inspect, and Coinbase's Cloudbot:
 
 ### 1. Agent Harness — Composed on Deep Agents
 
-Rather than forking an existing agent or building from scratch, Open SWE **composes** on the [Deep Agents](https://github.com/langchain-ai/deepagents) framework — similar to how Ramp built on top of OpenCode. This gives you an upgrade path (pull in upstream improvements) while letting you customize the orchestration, tools, and middleware for your org.
+Rather than forking an existing agent or building from scratch, Alephat **composes** on the [Deep Agents](https://github.com/langchain-ai/deepagents) framework — similar to how Ramp built on top of OpenCode. This gives you an upgrade path (pull in upstream improvements) while letting you customize the orchestration, tools, and middleware for your org.
 
 ```python
 create_deep_agent(
@@ -53,9 +49,9 @@ create_deep_agent(
 
 Every task runs in its own **isolated cloud sandbox** — a remote Linux environment with full shell access. The repo is cloned in, the agent gets full permissions, and the blast radius of any mistake is fully contained. No production access, no confirmation prompts.
 
-Open SWE supports multiple sandbox providers out of the box — [Modal](https://modal.com/), [Daytona](https://www.daytona.io/), [Runloop](https://www.runloop.ai/), [E2B](https://e2b.dev/), and [LangSmith](https://smith.langchain.com/) — and you can plug in your own. See the [Customization Guide](docs/CUSTOMIZATION.md#1-sandbox) for details.
+Alephat supports multiple sandbox providers out of the box — [Modal](https://modal.com/), [Daytona](https://www.daytona.io/), [Runloop](https://www.runloop.ai/), [E2B](https://e2b.dev/), and [LangSmith](https://smith.langchain.com/) — and you can plug in your own. See the [Customization Guide](docs/CUSTOMIZATION.md#1-sandbox) for details.
 
-This fork also supports the Kubernetes SIGs [Agent Sandbox](https://github.com/kubernetes-sigs/agent-sandbox) API. On GKE, each task can run in an Agent Sandbox Pod isolated by [Kata Containers](https://katacontainers.io/), while the Open SWE control plane remains entirely in your cluster.
+This fork also supports the Kubernetes SIGs [Agent Sandbox](https://github.com/kubernetes-sigs/agent-sandbox) API. On GKE, each task can run in an Agent Sandbox Pod isolated by [Kata Containers](https://katacontainers.io/), while the Alephat control plane remains entirely in your cluster.
 
 This follows the principle all three companies converge on: **isolate first, then give full permissions inside the boundary.**
 
@@ -65,7 +61,7 @@ This follows the principle all three companies converge on: **isolate first, the
 
 ### 3. Tools — Curated, Not Accumulated
 
-Stripe's key insight: *tool curation matters more than tool quantity.* Open SWE follows this principle with a small, focused toolset:
+Stripe's key insight: *tool curation matters more than tool quantity.* Alephat follows this principle with a small, focused toolset:
 
 | Tool | Purpose |
 |---|---|
@@ -81,18 +77,18 @@ GitHub operations in the upstream LangSmith mode use `GH_TOKEN=dummy gh` through
 
 **Optional observability tools (server-side):** Admins can connect Datadog and LangSmith from team settings (Admin → Observability credentials). When connected, the agent gains Datadog tools (via Datadog's hosted MCP server, default `toolsets=core`) and read-only LangSmith tools (`langsmith_get_trace`, `langsmith_list_runs`). These run in the LangGraph server process using credentials encrypted at rest — the sandbox never holds Datadog or LangSmith keys. They are loaded **only for runs triggered by an authorized user** (admins, plus any emails in `OBSERVABILITY_AUTHORIZED_EMAILS`), so a prompt-injected run from an untrusted contributor cannot reach team observability data. Use scoped, read-oriented keys regardless: observability data (logs, traces) is attacker-influenced content that can carry prompt injection, and the agent has network egress — the same residual-risk class as `web_search` / `fetch_url`.
 
-**Optional Corridor guardrails (server-side MCP):** Set `CORRIDOR_API_TOKEN` (or `CORRIDOR_MCP_TOKEN` / `CORRIDOR_TOKEN`) to load Corridor's hosted MCP server for each agent run. Open SWE exposes only Corridor's `analyzePlan` tool. `CORRIDOR_MCP_URL` defaults to `https://app.corridor.dev/api/mcp`; if set explicitly, Open SWE only accepts the same HTTPS host and `/api/mcp` path. Tokens are sent via `Authorization: Bearer ...` from the LangGraph server process and are never placed in the sandbox. A legacy `?token=...` URL is accepted and normalized into the header form.
+**Optional Corridor guardrails (server-side MCP):** Set `CORRIDOR_API_TOKEN` (or `CORRIDOR_MCP_TOKEN` / `CORRIDOR_TOKEN`) to load Corridor's hosted MCP server for each agent run. Alephat exposes only Corridor's `analyzePlan` tool. `CORRIDOR_MCP_URL` defaults to `https://app.corridor.dev/api/mcp`; if set explicitly, Alephat only accepts the same HTTPS host and `/api/mcp` path. Tokens are sent via `Authorization: Bearer ...` from the LangGraph server process and are never placed in the sandbox. A legacy `?token=...` URL is accepted and normalized into the header form.
 
 ### 4. Context Engineering — AGENTS.md + Source Context
 
-Open SWE gathers context from two sources:
+Alephat gathers context from two sources:
 
 - **`AGENTS.md`** — If the repo contains an `AGENTS.md` file at the root, it's read from the sandbox and injected into the system prompt. This is your repo-level equivalent of Stripe's rule files: encoding conventions, testing requirements, and architectural decisions that every agent run should follow.
 - **Source context** — The full Linear issue (title, description, comments) or Slack thread history is assembled and passed to the agent, so it starts with rich context rather than discovering everything through tool calls.
 
 ### 5. Orchestration — Subagents + Middleware
 
-Open SWE's orchestration has two layers:
+Alephat's orchestration has two layers:
 
 **Subagents:** The Deep Agents framework natively supports spawning child agents via the `task` tool. The main agent can fan out independent subtasks to isolated subagents — each with its own middleware stack, todo list, and file operations. This is similar to Ramp's child sessions for parallel work.
 
@@ -104,24 +100,24 @@ Open SWE's orchestration has two layers:
 
 ### 6. Invocation — Slack, Linear, and GitHub
 
-All three companies in the article converge on **Slack as the primary invocation surface**. Open SWE does the same:
+All three companies in the article converge on **Slack as the primary invocation surface**. Alephat does the same:
 
 - **Slack** — Mention the bot in any thread. Supports `repo:owner/name` syntax to specify which repo to work on. The agent replies in-thread with status updates and PR links.
-- **Linear** — Comment `@openswe` on any issue. The agent reads the full issue context, reacts with 👀 to acknowledge, and posts results back as comments.
-- **GitHub** — Tag `@openswe` in PR comments on agent-created PRs to have it address review feedback and push fixes to the same branch.
+- **Linear** — Comment `@alephat` on any issue. The agent reads the full issue context, reacts with 👀 to acknowledge, and posts results back as comments.
+- **GitHub** — Tag `@alephat` in PR comments on agent-created PRs to have it address review feedback and push fixes to the same branch.
 
 Each invocation creates a deterministic thread ID, so follow-up messages on the same issue or thread route to the same running agent.
 
 ### 7. Validation — Prompt-Driven
 
 The agent is instructed to run linters, formatters, and tests before committing, and is responsible end-to-end for committing, pushing, opening/updating the draft PR, and replying in the source channel.
-This is an area where you can extend Open SWE for your org: add deterministic CI checks, visual verification, or review gates as additional middleware. See the [Customization Guide](docs/CUSTOMIZATION.md#6-middleware) for how.
+This is an area where you can extend Alephat for your org: add deterministic CI checks, visual verification, or review gates as additional middleware. See the [Customization Guide](docs/CUSTOMIZATION.md#6-middleware) for how.
 
 ---
 
 ## Comparison
 
-| Decision | Open SWE | Stripe (Minions) | Ramp (Inspect) | Coinbase (Cloudbot) |
+| Decision | Alephat | Stripe (Minions) | Ramp (Inspect) | Coinbase (Cloudbot) |
 |---|---|---|---|---|
 | **Harness** | Composed (Deep Agents/LangGraph) | Forked (Goose) | Composed (OpenCode) | Built from scratch |
 | **Sandbox** | Pluggable (Modal, Daytona, Runloop, etc.) | AWS EC2 devboxes (pre-warmed) | Modal containers (pre-warmed) | In-house |
@@ -135,7 +131,7 @@ This is an area where you can extend Open SWE for your org: add deterministic CI
 
 ## Features
 
-- **Trigger from Linear, Slack, or GitHub** — mention `@openswe` in a comment to kick off a task
+- **Trigger from Linear, Slack, or GitHub** — mention `@alephat` in a comment to kick off a task
 - **Instant acknowledgement** — reacts with 👀 the moment it picks up your message
 - **Message it while it's running** — send follow-up messages mid-task and it'll pick them up before its next step
 - **Run multiple tasks in parallel** — each task runs in its own isolated cloud sandbox
@@ -148,7 +144,7 @@ This is an area where you can extend Open SWE for your org: add deterministic CI
 
 ## Standalone GKE deployment: Kata, Agent Sandbox, LiteLLM, and KEDA
 
-This fork can run Open SWE's API, webhook receiver, dashboard, worker harness, PostgreSQL, NATS JetStream, LiteLLM gateway, and code sandboxes on Kubernetes. It does **not** require a LangSmith deployment, a commercial sandbox account, or any Open SWE license key. The checked-in configuration uses the open-source editions of Agent Sandbox, Kata Containers, KEDA, NATS, PostgreSQL, and LiteLLM.
+This fork can run Alephat's API, webhook receiver, dashboard, worker harness, PostgreSQL, NATS JetStream, LiteLLM gateway, and code sandboxes on Kubernetes. It does **not** require a LangSmith deployment, a commercial sandbox account, or any Alephat license key. The checked-in configuration uses the open-source editions of Agent Sandbox, Kata Containers, KEDA, NATS, PostgreSQL, and LiteLLM.
 
 You still pay for GKE and model usage, and you must supply normal authentication credentials: a GitHub App plus an API key for each model provider you enable. Those are service credentials, not license keys. LiteLLM enterprise-only metering is disabled.
 
@@ -168,23 +164,23 @@ Install and authenticate:
 Use a Google Cloud project with billing enabled, then clone this fork and set deployment values:
 
 ```bash
-export PROJECT_ID="your-gcp-project"
+export PROJECT_ID="your-gcp-project-id"
 export REGION="us-central1"
 export ZONE="us-central1-a"
-export CLUSTER_NAME="openswe"
-export AR_REPOSITORY="openswe"
+export CLUSTER_NAME="alephat"
+export AR_REPOSITORY="alephat"
 export PLATFORM_NAMESPACE="alephat"
 export SANDBOX_NAMESPACE="alephat-sandboxes"
-export PLATFORM_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/openswe-platform:latest"
-export UI_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/openswe-ui:latest"
+export PLATFORM_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/alephat-platform:latest"
+export UI_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPOSITORY}/alephat-ui:latest"
 
 # Required when publishing the dashboard with Traefik in step 9.
 export DNS_DOMAIN="example.com"
 export DNS_ZONE="example-com"
-export OPENSWE_HOST="openswe.example.com"
-export OPENSWE_ORIGIN="https://${OPENSWE_HOST}"
+export ALEPHAT_HOST="alephat.example.com"
+export ALEPHAT_ORIGIN="https://${ALEPHAT_HOST}"
 export ACME_EMAIL="admin@example.com"
-export TRAEFIK_IP_NAME="openswe-traefik"
+export TRAEFIK_IP_NAME="alephat-traefik"
 
 gcloud config set project "$PROJECT_ID"
 gcloud services enable \
@@ -265,7 +261,7 @@ kubectl -n keda rollout status deployment/keda-operator --timeout=5m
 kubectl get crd scaledobjects.keda.sh
 ```
 
-The NATS JetStream scaler is included in KEDA; no separate scaler installation is required. The `ScaledObject` is applied after Open SWE starts once, so the API has created the streams and the initial harness has created its durable consumer.
+The NATS JetStream scaler is included in KEDA; no separate scaler installation is required. The `ScaledObject` is applied after Alephat starts once, so the API has created the streams and the initial harness has created its durable consumer.
 
 ### 5. Deploy standalone LiteLLM with OpenAI, Anthropic, and Gemini routes
 
@@ -304,7 +300,7 @@ kubectl -n "$PLATFORM_NAMESPACE" rollout status \
 
 The values file creates logical aliases that match the dashboard model IDs and routes them to OpenAI, Anthropic, and Gemini. Provider model names change over time and differ by account; update each `litellm_params.model` to a model enabled for your account. `DEFAULT_MODEL` in `deploy/k8s/configmap.yaml` must match one of the `model_name` aliases. See the official [LiteLLM provider examples](https://docs.litellm.ai/) and [Kubernetes production guide](https://docs.litellm.ai/docs/proxy/deploy).
 
-This getting-started deployment gives LiteLLM its own bundled PostgreSQL instance. Open SWE uses a different PostgreSQL StatefulSet in the next step. For production, use separate Cloud SQL databases and Redis if you run multiple LiteLLM replicas; do not share schemas or credentials between LiteLLM and Open SWE.
+This getting-started deployment gives LiteLLM its own bundled PostgreSQL instance. Alephat uses a different PostgreSQL StatefulSet in the next step. For production, use separate Cloud SQL databases and Redis if you run multiple LiteLLM replicas; do not share schemas or credentials between LiteLLM and Alephat.
 
 Test the gateway from inside the cluster with any configured alias:
 
@@ -325,16 +321,16 @@ Open **GitHub Settings → Developer settings → GitHub Apps → New GitHub App
 
 Under **Basic information**, configure:
 
-Replace `openswe.example.com` below with the value of `OPENSWE_HOST` from step 1.
+Replace `alephat.example.com` below with the value of `ALEPHAT_HOST` from step 1.
 
-- Homepage URL: use `http://127.0.0.1:18080` for port forwarding or `https://openswe.example.com` for production.
+- Homepage URL: use `http://127.0.0.1:18080` for port forwarding or `https://alephat.example.com` for production.
 - Callback URLs: add every origin you will use. For this guide, add both:
   - `http://127.0.0.1:18080/dashboard/api/auth/callback`
-  - `https://openswe.example.com/dashboard/api/auth/callback`
+  - `https://alephat.example.com/dashboard/api/auth/callback`
 - Under **Identifying and authorizing users**, enable **Request user authorization (OAuth) during installation** once one callback is reachable. If you create and install the app before deploying the UI, save the callback URLs now and enable this option after step 9; the dashboard's Sign in button can also start the OAuth web flow explicitly and supplies the matching `redirect_uri`.
 - Leave Device Flow disabled; the dashboard uses GitHub's web application flow.
-- Enable webhooks and set the production Webhook URL to `https://openswe.example.com/hooks/github`. For local webhook development, use a tunnel to the webhook service; a loopback URL is not reachable by GitHub.
-- Generate a webhook secret with `openssl rand -hex 32` and enter the same value in the `openswe-secrets` Secret below.
+- Enable webhooks and set the production Webhook URL to `https://alephat.example.com/hooks/github`. For local webhook development, use a tunnel to the webhook service; a loopback URL is not reachable by GitHub.
+- Generate a webhook secret with `openssl rand -hex 32` and enter the same value in the `alephat-secrets` Secret below.
 
 Set these repository permissions:
 
@@ -354,7 +350,7 @@ After creating the app:
 1. Copy the App ID and OAuth Client ID.
 2. Generate an OAuth client secret.
 3. Generate and download a private-key `.pem` file.
-4. Select **Install App**, choose the account or organization, and grant access only to the repositories Open SWE should operate on.
+4. Select **Install App**, choose the account or organization, and grant access only to the repositories Alephat should operate on.
 5. Copy the numeric installation ID from the installation page URL.
 
 `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_CLIENT_SECRET` are used for browser OAuth. `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, and `GITHUB_APP_INSTALLATION_ID` are used server-side to mint installation tokens. The private key and client secret must never be exposed to the browser or sandbox.
@@ -366,19 +362,19 @@ export GITHUB_APP_CLIENT_SECRET="replace-me"
 export GITHUB_APP_INSTALLATION_ID="12345678"
 export GITHUB_APP_PRIVATE_KEY_FILE="/absolute/path/to/github-app.private-key.pem"
 export GITHUB_WEBHOOK_SECRET="$(openssl rand -hex 32)"
-export OPENSWE_DB_PASSWORD="$(openssl rand -hex 24)"
+export ALEPHAT_DB_PASSWORD="$(openssl rand -hex 24)"
 export PLATFORM_API_TOKEN="$(openssl rand -hex 32)"
 export PLATFORM_JWT_SECRET="$(openssl rand -hex 32)"
 export DASHBOARD_JWT_SECRET="$(openssl rand -hex 32)"
 export TOKEN_ENCRYPTION_KEY="$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '\n')"
 
-kubectl -n "$PLATFORM_NAMESPACE" create secret generic openswe-postgres \
-  --from-literal=password="$OPENSWE_DB_PASSWORD"
-kubectl -n "$PLATFORM_NAMESPACE" create secret generic openswe-secrets \
+kubectl -n "$PLATFORM_NAMESPACE" create secret generic alephat-postgres \
+  --from-literal=password="$ALEPHAT_DB_PASSWORD"
+kubectl -n "$PLATFORM_NAMESPACE" create secret generic alephat-secrets \
   --from-literal=PLATFORM_API_TOKEN="$PLATFORM_API_TOKEN" \
   --from-literal=PLATFORM_JWT_SECRET="$PLATFORM_JWT_SECRET" \
   --from-literal=GITHUB_WEBHOOK_SECRET="$GITHUB_WEBHOOK_SECRET"
-kubectl -n "$PLATFORM_NAMESPACE" create secret generic openswe-oauth \
+kubectl -n "$PLATFORM_NAMESPACE" create secret generic alephat-oauth \
   --from-literal=GITHUB_APP_ID="$GITHUB_APP_ID" \
   --from-literal=GITHUB_APP_CLIENT_ID="$GITHUB_APP_CLIENT_ID" \
   --from-literal=GITHUB_APP_CLIENT_SECRET="$GITHUB_APP_CLIENT_SECRET" \
@@ -390,7 +386,7 @@ kubectl -n "$PLATFORM_NAMESPACE" create secret generic openswe-oauth \
 
 For production, create these secrets with Secret Manager plus External Secrets or the Secrets Store CSI driver instead of putting values in shell history. Never commit rendered Secrets, private keys, or API keys.
 
-### 7. Build and push the Open SWE images
+### 7. Build and push the Alephat images
 
 Create an Artifact Registry Docker repository and submit both builds to Cloud Build:
 
@@ -415,14 +411,14 @@ Point Kustomize at those images without editing every Deployment:
 (
   cd deploy/k8s
   kustomize edit set image \
-    "us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform=${PLATFORM_IMAGE}" \
-    "us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-ui=${UI_IMAGE}"
+    "us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform=${PLATFORM_IMAGE}" \
+    "us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-ui=${UI_IMAGE}"
 )
 ```
 
 If you use a different LiteLLM release or logical model name, update `deploy/k8s/litellm-values.yaml` and `deploy/k8s/configmap.yaml` before applying the manifests.
 
-### 8. Deploy Open SWE and enable KEDA scaling
+### 8. Deploy Alephat and enable KEDA scaling
 
 The RBAC and NetworkPolicy manifests are separate because they target `alephat-sandboxes`, while the Kustomize base applies its namespace transformer to the `alephat` platform resources.
 
@@ -431,9 +427,9 @@ queued/running tasks finish, and export PostgreSQL before the rollout. The old N
 ephemeral, so no queued work should remain when NATS restarts:
 
 ```bash
-kubectl -n "$PLATFORM_NAMESPACE" exec openswe-postgresql-0 -- \
-  sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --clean --if-exists -U openswe -d openswe' \
-  > openswe-before-pvc.sql
+kubectl -n "$PLATFORM_NAMESPACE" exec alephat-postgresql-0 -- \
+  sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --clean --if-exists -U alephat -d alephat' \
+  > alephat-before-pvc.sql
 ```
 
 Keep that backup outside the cluster. After applying, verify the PVCs are bound and restore the dump
@@ -445,20 +441,20 @@ kubectl apply -f deploy/k8s/agent-sandbox-networkpolicy.yaml
 kubectl apply -k deploy/k8s
 
 kubectl -n "$PLATFORM_NAMESPACE" wait \
-  --for=condition=complete job/openswe-migrate --timeout=5m
-kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-api --timeout=10m
-kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-webhook --timeout=10m
-kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-ui --timeout=10m
-kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-harness --timeout=10m
+  --for=condition=complete job/alephat-migrate --timeout=5m
+kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/alephat-api --timeout=10m
+kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/alephat-webhook --timeout=10m
+kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/alephat-ui --timeout=10m
+kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/alephat-harness --timeout=10m
 
-if [ -f openswe-before-pvc.sql ]; then
-  kubectl -n "$PLATFORM_NAMESPACE" exec -i openswe-postgresql-0 -- \
-    sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U openswe -d openswe' \
-    < openswe-before-pvc.sql
+if [ -f alephat-before-pvc.sql ]; then
+  kubectl -n "$PLATFORM_NAMESPACE" exec -i alephat-postgresql-0 -- \
+    sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U alephat -d alephat' \
+    < alephat-before-pvc.sql
 fi
 
 kubectl apply -f deploy/k8s/harness-keda.yaml
-kubectl -n "$PLATFORM_NAMESPACE" get scaledobject openswe-harness
+kubectl -n "$PLATFORM_NAMESPACE" get scaledobject alephat-harness
 kubectl -n "$PLATFORM_NAMESPACE" get hpa
 ```
 
@@ -471,10 +467,10 @@ kubectl -n "$PLATFORM_NAMESPACE" get pods,svc
 kubectl -n "$PLATFORM_NAMESPACE" get pvc
 kubectl -n "$SANDBOX_NAMESPACE" get sandboxtemplate
 kubectl -n keda get pods
-kubectl -n "$PLATFORM_NAMESPACE" logs deployment/openswe-harness --tail=100
+kubectl -n "$PLATFORM_NAMESPACE" logs deployment/alephat-harness --tail=100
 ```
 
-The checked-in Open SWE PostgreSQL and NATS manifests each request a `20Gi`
+The checked-in Alephat PostgreSQL and NATS manifests each request a `20Gi`
 `standard-rwo` GKE persistent disk. LiteLLM's separate PostgreSQL instance requests another `20Gi`
 disk through its Helm values. PostgreSQL data and NATS JetStream state therefore survive Pod
 restarts and rescheduling. Set a different storage class or capacity in
@@ -482,7 +478,7 @@ restarts and rescheduling. Set a different storage class or capacity in
 first apply when required. PVC capacity can be expanded later when the selected StorageClass allows
 expansion, but it cannot be shrunk.
 
-### 9. Publish Open SWE with Traefik, HTTPS, and DNS
+### 9. Publish Alephat with Traefik, HTTPS, and DNS
 
 For production, reserve a regional external IPv4 address in the same region and network tier as the GKE cluster. Keeping the address reserved prevents it from changing when the Traefik Service is recreated.
 
@@ -523,7 +519,7 @@ If the domain is already hosted by Cloud DNS, use its managed-zone name as `DNS_
 gcloud dns managed-zones describe "$DNS_ZONE" >/dev/null 2>&1 || \
 gcloud dns managed-zones create "$DNS_ZONE" \
   --dns-name="${DNS_DOMAIN%.}." \
-  --description="Open SWE public DNS zone"
+  --description="Alephat public DNS zone"
 
 gcloud dns managed-zones describe "$DNS_ZONE" \
   --format='value(nameServers)'
@@ -532,13 +528,13 @@ gcloud dns managed-zones describe "$DNS_ZONE" \
 For a newly created zone, configure the listed name servers at your domain registrar and wait for delegation to propagate. Then create the dashboard A record:
 
 ```bash
-gcloud dns record-sets create "${OPENSWE_HOST%.}." \
+gcloud dns record-sets create "${ALEPHAT_HOST%.}." \
   --zone "$DNS_ZONE" \
   --type A \
   --ttl 300 \
   --rrdatas "$TRAEFIK_IP"
 
-dig +short "$OPENSWE_HOST"
+dig +short "$ALEPHAT_HOST"
 ```
 
 If DNS is hosted outside Cloud DNS, create the equivalent `A` record with that provider. Do not create the TLS route until public DNS resolves to `TRAEFIK_IP`; Let's Encrypt must reach port 80 for the HTTP-01 challenge.
@@ -546,32 +542,32 @@ If DNS is hosted outside Cloud DNS, create the equivalent `A` record with that p
 Apply the Traefik route after replacing the example hostname. `/hooks/*` goes directly to the webhook service; all other paths go to the UI, whose Nginx configuration proxies `/dashboard/api/*` and `/v1/*` to the API.
 
 ```bash
-sed "s/openswe\.example\.com/${OPENSWE_HOST}/g" \
+sed "s/alephat\.example\.com/${ALEPHAT_HOST}/g" \
   deploy/k8s/traefik-ingressroute.yaml | kubectl apply -f -
 ```
 
 Update the runtime URLs so OAuth emits the production callback, cookies are marked secure, and CORS accepts the public origin. Keep the same values in your permanent Kustomize overlay or `configmap.yaml`; otherwise a later base apply will restore the loopback defaults.
 
 ```bash
-kubectl -n "$PLATFORM_NAMESPACE" patch configmap openswe-config \
+kubectl -n "$PLATFORM_NAMESPACE" patch configmap alephat-config \
   --type merge \
-  --patch "{\"data\":{\"DASHBOARD_BASE_URL\":\"${OPENSWE_ORIGIN}\",\"DASHBOARD_API_BASE_URL\":\"${OPENSWE_ORIGIN}\",\"DASHBOARD_ALLOWED_ORIGINS\":\"${OPENSWE_ORIGIN}\",\"CORS_ORIGINS\":\"${OPENSWE_ORIGIN}\"}}"
+  --patch "{\"data\":{\"DASHBOARD_BASE_URL\":\"${ALEPHAT_ORIGIN}\",\"DASHBOARD_API_BASE_URL\":\"${ALEPHAT_ORIGIN}\",\"DASHBOARD_ALLOWED_ORIGINS\":\"${ALEPHAT_ORIGIN}\",\"CORS_ORIGINS\":\"${ALEPHAT_ORIGIN}\"}}"
 
 kubectl -n "$PLATFORM_NAMESPACE" rollout restart \
-  deployment/openswe-api \
-  deployment/openswe-webhook \
-  deployment/openswe-harness
-kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/openswe-api --timeout=10m
+  deployment/alephat-api \
+  deployment/alephat-webhook \
+  deployment/alephat-harness
+kubectl -n "$PLATFORM_NAMESPACE" rollout status deployment/alephat-api --timeout=10m
 
-curl -fsS "${OPENSWE_ORIGIN}/healthz"
-curl -sS -o /dev/null -D - "${OPENSWE_ORIGIN}/dashboard/api/auth/login"
+curl -fsS "${ALEPHAT_ORIGIN}/healthz"
+curl -sS -o /dev/null -D - "${ALEPHAT_ORIGIN}/dashboard/api/auth/login"
 kubectl -n traefik logs deployment/traefik --tail=100
 ```
 
 Return to the GitHub App settings and verify that these exact production values are saved before testing login or deliveries:
 
-- Callback URL: `${OPENSWE_ORIGIN}/dashboard/api/auth/callback`
-- Webhook URL: `${OPENSWE_ORIGIN}/hooks/github`
+- Callback URL: `${ALEPHAT_ORIGIN}/dashboard/api/auth/callback`
+- Webhook URL: `${ALEPHAT_ORIGIN}/hooks/github`
 - Webhooks: active
 - Request user authorization (OAuth) during installation: enabled
 
@@ -582,12 +578,12 @@ For highly available ingress, use multiple Traefik replicas with cert-manager or
 For a local deployment, start the port forward and keep it running:
 
 ```bash
-kubectl -n "$PLATFORM_NAMESPACE" port-forward service/openswe-ui 18080:80
+kubectl -n "$PLATFORM_NAMESPACE" port-forward service/alephat-ui 18080:80
 ```
 
 Open [http://127.0.0.1:18080](http://127.0.0.1:18080), sign in with GitHub, select a repository installed for the GitHub App, and submit a small task such as:
 
-For the Traefik deployment, open `https://openswe.example.com` using your configured hostname instead. GitHub should redirect back to `/dashboard/api/auth/callback`, set the secure `osw_session` cookie, and return to the dashboard.
+For the Traefik deployment, open `https://alephat.example.com` using your configured hostname instead. GitHub should redirect back to `/dashboard/api/auth/callback`, set the secure `alephat_session` cookie, and return to the dashboard.
 
 ```text
 Add a short "Testing notes" section to README.md, inspect the diff, and report the changed files.
@@ -596,7 +592,7 @@ Add a short "Testing notes" section to README.md, inspect the diff, and report t
 In another terminal, watch KEDA activate the harness and Agent Sandbox create a Kata-backed sandbox:
 
 ```bash
-kubectl -n "$PLATFORM_NAMESPACE" get deployment openswe-harness -w
+kubectl -n "$PLATFORM_NAMESPACE" get deployment alephat-harness -w
 kubectl -n "$SANDBOX_NAMESPACE" get sandbox,pod -w
 ```
 
@@ -619,7 +615,7 @@ The first command must print `kata-qemu`. A successful task should show model ev
 
 The checked-in manifests are a reproducible standalone starting point, not an HA production topology:
 
-- `deploy/k8s/postgresql.yaml` gives Open SWE a dedicated PostgreSQL StatefulSet backed by a GKE
+- `deploy/k8s/postgresql.yaml` gives Alephat a dedicated PostgreSQL StatefulSet backed by a GKE
   persistent disk. Configure scheduled backups and use Cloud SQL for regional HA, point-in-time
   recovery, and managed failover.
 - `deploy/k8s/nats.yaml` persists JetStream state on a GKE disk but remains a single NATS server.

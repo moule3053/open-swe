@@ -15,8 +15,8 @@ ReviewThread = dict[str, Any]
 ReviewThreadMatch = tuple[ReviewThread, int | None]
 
 
-def _is_open_swe_bot_comment(comment: ReviewThread) -> bool:
-    return comment.get("author") in {"open-swe", "open-swe[bot]"}
+def _is_alephat_bot_comment(comment: ReviewThread) -> bool:
+    return comment.get("author") in {"alephat", "alephat[bot]"}
 
 
 def _int_list(value: Any) -> list[int]:
@@ -52,7 +52,7 @@ def _human_replies_after_bot_comment(
         if not seen_bot_comment:
             continue
         author = comment.get("author")
-        if author in {"open-swe", "open-swe[bot]"}:
+        if author in {"alephat", "alephat[bot]"}:
             continue
         replies.append(comment)
     return replies
@@ -79,7 +79,7 @@ def _index_review_threads(
             if isinstance(comment_id, int):
                 by_comment_id[comment_id] = review_thread
             body = comment.get("body")
-            if not isinstance(body, str) or not _is_open_swe_bot_comment(comment):
+            if not isinstance(body, str) or not _is_alephat_bot_comment(comment):
                 continue
             marker = parse_review_comment_marker(body)
             if marker is not None and isinstance(comment_id, int):
@@ -256,7 +256,7 @@ async def reconcile_findings_with_review_threads(
     reviewer_thread_id: str,
     review_threads: list[ReviewThread],
 ) -> list[Finding]:
-    """Sync tracked Open SWE findings with the current GitHub review-thread state."""
+    """Sync tracked Alephat findings with the current GitHub review-thread state."""
     findings = await list_findings(reviewer_thread_id)
     if not findings:
         return findings

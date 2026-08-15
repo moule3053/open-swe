@@ -77,20 +77,20 @@ def test_generate_thread_id_from_github_issue_is_deterministic() -> None:
 
 def test_build_github_issue_prompt_includes_issue_context() -> None:
     prompt = github_webhooks.build_github_issue_prompt(
-        {"owner": "langchain-ai", "name": "open-swe"},
+        {"owner": "langchain-ai", "name": "alephat"},
         42,
         "12345",
         "Fix the flaky test",
         "The test is failing intermittently.",
         [{"author": "octocat", "body": "Please take a look", "created_at": "2026-03-09T00:00:00Z"}],
         github_login="octocat",
-        issue_url="https://github.com/langchain-ai/open-swe/issues/42",
+        issue_url="https://github.com/moule3053/alephat/issues/42",
     )
 
     assert "Fix the flaky test" in prompt
     assert "The test is failing intermittently." in prompt
     assert "Please take a look" in prompt
-    assert "https://github.com/langchain-ai/open-swe/issues/42" in prompt
+    assert "https://github.com/moule3053/alephat/issues/42" in prompt
     assert "PR description links back to this issue" in prompt
     assert "repository's PR conventions" in prompt
     assert "GH_TOKEN=dummy gh issue comment" in prompt
@@ -120,23 +120,23 @@ def test_auto_review_enablement_uses_dashboard_opt_in(monkeypatch) -> None:
     async def fake_is_review_repo_enabled(owner: str, name: str) -> bool:
         seen["owner"] = owner
         seen["name"] = name
-        return owner == "langchain-ai" and name == "open-swe-app"
+        return owner == "langchain-ai" and name == "alephat-app"
 
     monkeypatch.setattr(webhook_common, "is_review_repo_enabled", fake_is_review_repo_enabled)
 
     assert (
         asyncio.run(
             webhook_common._is_repo_auto_review_enabled(
-                {"owner": "langchain-ai", "name": "open-swe-app"}
+                {"owner": "langchain-ai", "name": "alephat-app"}
             )
         )
         is True
     )
-    assert seen == {"owner": "langchain-ai", "name": "open-swe-app"}
+    assert seen == {"owner": "langchain-ai", "name": "alephat-app"}
     assert (
         asyncio.run(
             webhook_common._is_repo_auto_review_enabled(
-                {"owner": "langchain-ai", "name": "open-swe"}
+                {"owner": "langchain-ai", "name": "alephat"}
             )
         )
         is False
@@ -163,7 +163,7 @@ def test_github_webhook_skips_automatic_review_when_disabled(monkeypatch) -> Non
         "pull_request",
         {
             "action": "opened",
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "pull_request": {"number": 1244},
         },
     )
@@ -195,10 +195,10 @@ def test_github_webhook_accepts_issue_events(monkeypatch) -> None:
             "issue": {
                 "id": 12345,
                 "number": 42,
-                "title": "@openswe fix the flaky test",
+                "title": "@alephat fix the flaky test",
                 "body": "The test is failing intermittently.",
             },
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "sender": {"login": "octocat"},
         },
     )
@@ -228,10 +228,10 @@ def test_github_webhook_ignores_issue_events_without_body_or_title_change(monkey
             "issue": {
                 "id": 12345,
                 "number": 42,
-                "title": "@openswe fix the flaky test",
+                "title": "@alephat fix the flaky test",
                 "body": "The test is failing intermittently.",
             },
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "sender": {"login": "octocat"},
         },
     )
@@ -258,8 +258,8 @@ def test_github_webhook_accepts_issue_comment_events(monkeypatch) -> None:
         {
             "action": "created",
             "issue": {"id": 12345, "number": 42, "title": "Fix the flaky test"},
-            "comment": {"body": "@openswe please handle this"},
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "comment": {"body": "@alephat please handle this"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "sender": {"login": "octocat"},
         },
     )
@@ -287,12 +287,12 @@ def test_github_webhook_ignores_unmentioned_comment_without_info_log(monkeypatch
             "action": "created",
             "pull_request": {
                 "number": 1244,
-                "html_url": "https://github.com/langchain-ai/open-swe/pull/1244",
+                "html_url": "https://github.com/moule3053/alephat/pull/1244",
                 "base": {"sha": "base-sha"},
                 "head": {"sha": "head-sha", "ref": "feature-branch"},
             },
             "comment": {"body": "Looks good to me"},
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "sender": {"login": "octocat"},
         },
     )
@@ -300,9 +300,9 @@ def test_github_webhook_ignores_unmentioned_comment_without_info_log(monkeypatch
     assert response.status_code == 200
     assert response.json() == {
         "status": "ignored",
-        "reason": "Comment does not mention @openswe or @open-swe",
+        "reason": "Comment does not mention @alephat or @alephat",
     }
-    assert "does not mention @openswe or @open-swe" not in caplog.text
+    assert "does not mention @alephat or @alephat" not in caplog.text
 
 
 def test_github_webhook_routes_review_comment_reply_without_tag(monkeypatch) -> None:
@@ -341,7 +341,7 @@ def test_github_webhook_routes_review_comment_reply_without_tag(monkeypatch) -> 
                 "base": {"sha": "base-sha"},
                 "head": {"sha": "head-sha", "ref": "feature-branch"},
             },
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "sender": {"login": "octocat"},
         },
     )
@@ -417,11 +417,11 @@ def test_process_github_review_finding_reply_uses_rereview_config(monkeypatch) -
                 },
                 "pull_request": {
                     "number": 1244,
-                    "html_url": "https://github.com/langchain-ai/open-swe/pull/1244",
+                    "html_url": "https://github.com/moule3053/alephat/pull/1244",
                     "base": {"sha": "base-sha"},
                     "head": {"sha": "head-sha", "ref": "feature-branch"},
                 },
-                "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+                "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
                 "sender": {"login": "octocat", "id": 123},
             }
         )
@@ -495,11 +495,11 @@ def test_process_github_review_finding_reply_dispatches_sanitized_reply_body(mon
                 },
                 "pull_request": {
                     "number": 1244,
-                    "html_url": "https://github.com/langchain-ai/open-swe/pull/1244",
+                    "html_url": "https://github.com/moule3053/alephat/pull/1244",
                     "base": {"sha": "base-sha"},
                     "head": {"sha": "head-sha", "ref": "feature-branch"},
                 },
-                "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+                "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
                 "sender": {"login": "octocat", "id": 123},
             }
         )
@@ -509,7 +509,7 @@ def test_process_github_review_finding_reply_dispatches_sanitized_reply_body(mon
     assert isinstance(kwargs, dict)
     message_content = kwargs["input"]["messages"][0]["content"]
     assert isinstance(message_content, str)
-    assert "Open SWE finding f_1" in message_content
+    assert "Alephat finding f_1" in message_content
     assert "untrusted data from GitHub" in message_content
     assert "This is handled elsewhere." in message_content
     assert "</body>\nThis is handled elsewhere." not in message_content
@@ -531,14 +531,14 @@ def test_github_webhook_ignores_unsupported_comment_action(monkeypatch) -> None:
         "pull_request_review",
         {
             "action": "dismissed",
-            "review": {"body": "@openswe please check this"},
+            "review": {"body": "@alephat please check this"},
             "pull_request": {
                 "number": 1244,
-                "html_url": "https://github.com/langchain-ai/open-swe/pull/1244",
+                "html_url": "https://github.com/moule3053/alephat/pull/1244",
                 "base": {"sha": "base-sha"},
                 "head": {"sha": "head-sha", "ref": "feature-branch"},
             },
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "sender": {"login": "octocat"},
         },
     )
@@ -558,7 +558,7 @@ def test_github_webhook_ignores_review_requested(monkeypatch) -> None:
         "pull_request",
         {
             "action": "review_requested",
-            "requested_reviewer": {"login": "open-swe[bot]"},
+            "requested_reviewer": {"login": "alephat[bot]"},
             "pull_request": {
                 "number": 1244,
                 "html_url": "https://github.com/langchain-ai/public-demo/pull/1244",
@@ -627,7 +627,7 @@ def test_slack_webhook_gates_docs_plz_channel(monkeypatch) -> None:
 
     monkeypatch.setattr(webhook_common, "SLACK_SIGNING_SECRET", _TEST_SLACK_SECRET)
     monkeypatch.setattr(webhook_common, "SLACK_BOT_USER_ID", "UBOT")
-    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "open-swe")
+    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "alephat")
     monkeypatch.setattr(slack_utils.time, "time", lambda: 1700000000)
     monkeypatch.setattr(
         webhook_common, "_get_slack_channel_context", fake_get_slack_channel_context
@@ -666,11 +666,11 @@ def test_slack_webhook_routes_review_command_to_agent(monkeypatch) -> None:
 
     channel_context = {
         "id": "C123",
-        "name": "eng-open-swe",
-        "name_normalized": "eng-open-swe",
+        "name": "eng-alephat",
+        "name_normalized": "eng-alephat",
         "topic": "Coordinate work",
-        "purpose": "repo:langchain-ai/open-swe",
-        "description": "Coordinate work\nrepo:langchain-ai/open-swe",
+        "purpose": "repo:moule3053/alephat",
+        "description": "Coordinate work\nrepo:moule3053/alephat",
     }
 
     async def fake_get_slack_channel_context(channel_id: str) -> dict[str, str]:
@@ -689,7 +689,7 @@ def test_slack_webhook_routes_review_command_to_agent(monkeypatch) -> None:
             "slack_user_id": slack_user_id,
             "channel_context": channel_context,
         }
-        return {"owner": "langchain-ai", "name": "open-swe"}
+        return {"owner": "langchain-ai", "name": "alephat"}
 
     async def fake_process_slack_mention(
         event_data: dict[str, object], repo_config: dict[str, str]
@@ -699,7 +699,7 @@ def test_slack_webhook_routes_review_command_to_agent(monkeypatch) -> None:
 
     monkeypatch.setattr(webhook_common, "SLACK_SIGNING_SECRET", _TEST_SLACK_SECRET)
     monkeypatch.setattr(webhook_common, "SLACK_BOT_USER_ID", "UBOT")
-    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "open-swe")
+    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "alephat")
     monkeypatch.setattr(slack_utils.time, "time", lambda: 1700000000)
     monkeypatch.setattr(
         webhook_common, "_get_slack_channel_context", fake_get_slack_channel_context
@@ -717,14 +717,14 @@ def test_slack_webhook_routes_review_command_to_agent(monkeypatch) -> None:
                 "channel": "C123",
                 "ts": "1700000000.000100",
                 "user": "U123",
-                "text": "<@UBOT> review https://github.com/langchain-ai/open-swe/pull/1244",
+                "text": "<@UBOT> review https://github.com/moule3053/alephat/pull/1244",
             },
         },
     )
 
     assert response.status_code == 200
     assert response.json()["message"] == "Slack mention queued"
-    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "alephat"}
     assert captured["channel_context_request"] == "C123"
     assert captured["repo_config_request"] == {
         "channel_id": "C123",
@@ -735,7 +735,7 @@ def test_slack_webhook_routes_review_command_to_agent(monkeypatch) -> None:
     event_data = captured["event_data"]
     assert isinstance(event_data, dict)
     assert event_data["channel_context"] == channel_context
-    assert event_data["text"] == "<@UBOT> review https://github.com/langchain-ai/open-swe/pull/1244"
+    assert event_data["text"] == "<@UBOT> review https://github.com/moule3053/alephat/pull/1244"
 
 
 def test_slack_webhook_malformed_review_command_starts_agent(monkeypatch) -> None:
@@ -744,7 +744,7 @@ def test_slack_webhook_malformed_review_command_starts_agent(monkeypatch) -> Non
     async def fake_get_slack_repo_config(
         channel_id: str, thread_ts: str, slack_user_id: str | None = None, **kwargs: object
     ) -> dict[str, str]:
-        return {"owner": "langchain-ai", "name": "open-swe"}
+        return {"owner": "langchain-ai", "name": "alephat"}
 
     async def fake_process_slack_mention(
         event_data: dict[str, object], repo_config: dict[str, str]
@@ -754,7 +754,7 @@ def test_slack_webhook_malformed_review_command_starts_agent(monkeypatch) -> Non
 
     monkeypatch.setattr(webhook_common, "SLACK_SIGNING_SECRET", _TEST_SLACK_SECRET)
     monkeypatch.setattr(webhook_common, "SLACK_BOT_USER_ID", "UBOT")
-    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "open-swe")
+    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "alephat")
     monkeypatch.setattr(slack_utils.time, "time", lambda: 1700000000)
     monkeypatch.setattr(webhook_common, "get_slack_repo_config", fake_get_slack_repo_config)
     monkeypatch.setattr(slack_webhooks, "process_slack_mention", fake_process_slack_mention)
@@ -769,19 +769,17 @@ def test_slack_webhook_malformed_review_command_starts_agent(monkeypatch) -> Non
                 "channel": "C123",
                 "ts": "1700000000.000100",
                 "user": "U123",
-                "text": "<@UBOT> review https://github.com/langchain-ai/open-swe/issues/1244",
+                "text": "<@UBOT> review https://github.com/moule3053/alephat/issues/1244",
             },
         },
     )
 
     assert response.status_code == 200
     assert response.json()["message"] == "Slack mention queued"
-    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "alephat"}
     event_data = captured["event_data"]
     assert isinstance(event_data, dict)
-    assert (
-        event_data["text"] == "<@UBOT> review https://github.com/langchain-ai/open-swe/issues/1244"
-    )
+    assert event_data["text"] == "<@UBOT> review https://github.com/moule3053/alephat/issues/1244"
 
 
 def test_slack_webhook_non_pr_review_request_starts_agent(monkeypatch) -> None:
@@ -795,7 +793,7 @@ def test_slack_webhook_non_pr_review_request_starts_agent(monkeypatch) -> None:
             "thread_ts": thread_ts,
             "slack_user_id": slack_user_id,
         }
-        return {"owner": "langchain-ai", "name": "open-swe"}
+        return {"owner": "langchain-ai", "name": "alephat"}
 
     async def fake_process_slack_mention(
         event_data: dict[str, object], repo_config: dict[str, str]
@@ -805,7 +803,7 @@ def test_slack_webhook_non_pr_review_request_starts_agent(monkeypatch) -> None:
 
     monkeypatch.setattr(webhook_common, "SLACK_SIGNING_SECRET", _TEST_SLACK_SECRET)
     monkeypatch.setattr(webhook_common, "SLACK_BOT_USER_ID", "UBOT")
-    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "open-swe")
+    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "alephat")
     monkeypatch.setattr(slack_utils.time, "time", lambda: 1700000000)
     monkeypatch.setattr(webhook_common, "get_slack_repo_config", fake_get_slack_repo_config)
     monkeypatch.setattr(slack_webhooks, "process_slack_mention", fake_process_slack_mention)
@@ -834,7 +832,7 @@ def test_slack_webhook_non_pr_review_request_starts_agent(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["message"] == "Slack mention queued"
-    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "alephat"}
     event_data = captured["event_data"]
     assert isinstance(event_data, dict)
     assert event_data["text"] == "<@UBOT> review this branch"
@@ -851,7 +849,7 @@ def test_slack_webhook_threaded_followup_uses_parent_thread_ts(monkeypatch) -> N
             "thread_ts": thread_ts,
             "slack_user_id": slack_user_id,
         }
-        return {"owner": "langchain-ai", "name": "open-swe"}
+        return {"owner": "langchain-ai", "name": "alephat"}
 
     async def fake_process_slack_mention(
         event_data: dict[str, object], repo_config: dict[str, str]
@@ -861,7 +859,7 @@ def test_slack_webhook_threaded_followup_uses_parent_thread_ts(monkeypatch) -> N
 
     monkeypatch.setattr(webhook_common, "SLACK_SIGNING_SECRET", _TEST_SLACK_SECRET)
     monkeypatch.setattr(webhook_common, "SLACK_BOT_USER_ID", "UBOT")
-    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "open-swe")
+    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "alephat")
     monkeypatch.setattr(slack_utils.time, "time", lambda: 1700000000)
     monkeypatch.setattr(webhook_common, "get_slack_repo_config", fake_get_slack_repo_config)
     monkeypatch.setattr(slack_webhooks, "process_slack_mention", fake_process_slack_mention)
@@ -909,7 +907,7 @@ def test_slack_webhook_accepts_unmentioned_direct_message(monkeypatch) -> None:
             "thread_ts": thread_ts,
             "slack_user_id": slack_user_id,
         }
-        return {"owner": "langchain-ai", "name": "open-swe"}
+        return {"owner": "langchain-ai", "name": "alephat"}
 
     async def fake_process_slack_mention(
         event_data: dict[str, object], repo_config: dict[str, str]
@@ -919,7 +917,7 @@ def test_slack_webhook_accepts_unmentioned_direct_message(monkeypatch) -> None:
 
     monkeypatch.setattr(webhook_common, "SLACK_SIGNING_SECRET", _TEST_SLACK_SECRET)
     monkeypatch.setattr(webhook_common, "SLACK_BOT_USER_ID", "UBOT")
-    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "open-swe")
+    monkeypatch.setattr(webhook_common, "SLACK_BOT_USERNAME", "alephat")
     monkeypatch.setattr(slack_utils.time, "time", lambda: 1700000000)
     monkeypatch.setattr(webhook_common, "get_slack_repo_config", fake_get_slack_repo_config)
     monkeypatch.setattr(slack_webhooks, "process_slack_mention", fake_process_slack_mention)
@@ -941,7 +939,7 @@ def test_slack_webhook_accepts_unmentioned_direct_message(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["message"] == "Slack mention queued"
-    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert captured["repo_config"] == {"owner": "langchain-ai", "name": "alephat"}
     assert captured["repo_config_request"] == {
         "channel_id": "D123",
         "thread_ts": "1700000000.000200",
@@ -961,7 +959,7 @@ def test_slack_webhook_accepts_unmentioned_ready_plan_reply(monkeypatch) -> None
         return True
 
     async def fake_get_slack_repo_config(*args: object, **kwargs: object) -> dict[str, str]:
-        return {"owner": "langchain-ai", "name": "open-swe"}
+        return {"owner": "langchain-ai", "name": "alephat"}
 
     async def fake_process_slack_mention(
         event_data: dict[str, object], repo_config: dict[str, str]
@@ -1088,11 +1086,11 @@ def test_process_github_pr_ready_creates_reviewer_run(monkeypatch) -> None:
                 "action": "opened",
                 "pull_request": {
                     "number": 1244,
-                    "html_url": "https://github.com/langchain-ai/open-swe/pull/1244",
+                    "html_url": "https://github.com/moule3053/alephat/pull/1244",
                     "base": {"sha": "base-sha", "ref": "main"},
                     "head": {"sha": "head-sha", "ref": "feature-branch"},
                 },
-                "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+                "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
                 "sender": {"login": "octocat", "id": 123},
             }
         )
@@ -1108,11 +1106,11 @@ def test_process_github_pr_ready_creates_reviewer_run(monkeypatch) -> None:
         "thread_id": captured["thread_id"],
         "if_exists": "do_nothing",
     }
-    assert "https://github.com/langchain-ai/open-swe/pull/1244" in prompt
+    assert "https://github.com/moule3053/alephat/pull/1244" in prompt
     assert "Base SHA: base-sha" in prompt
     assert "Head SHA: head-sha" in prompt
     assert config["source"] == "github"
-    assert config["repo"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert config["repo"] == {"owner": "langchain-ai", "name": "alephat"}
     assert config["pr_number"] == 1244
     assert config["review_requested"] is True
 
@@ -1195,9 +1193,9 @@ def test_trigger_pr_review_from_ref_creates_reviewer_run(monkeypatch) -> None:
         github_webhooks.trigger_pr_review_from_ref(
             GitHubPrRef(
                 owner="langchain-ai",
-                repo="open-swe",
+                repo="alephat",
                 number=1244,
-                url="https://github.com/langchain-ai/open-swe/pull/1244",
+                url="https://github.com/moule3053/alephat/pull/1244",
             ),
             source="slack",
             slack_channel_id="C123",
@@ -1220,7 +1218,7 @@ def test_trigger_pr_review_from_ref_creates_reviewer_run(monkeypatch) -> None:
     assert "Base SHA: base-sha" in prompt
     assert "Head SHA: head-sha" in prompt
     assert config["source"] == "slack"
-    assert config["repo"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert config["repo"] == {"owner": "langchain-ai", "name": "alephat"}
     assert config["pr_number"] == 1244
     assert config["review_requested"] is True
     assert config["slack_thread"] == {
@@ -1272,7 +1270,7 @@ async def test_request_pr_review_tool_uses_shared_trigger(monkeypatch) -> None:
         },
     )
 
-    result = await request_pr_review_tool("https://github.com/langchain-ai/open-swe/pull/1244")
+    result = await request_pr_review_tool("https://github.com/moule3053/alephat/pull/1244")
 
     pr_ref = captured["pr_ref"]
     assert isinstance(pr_ref, GitHubPrRef)
@@ -1292,11 +1290,11 @@ def test_process_github_pr_comment_without_email_skips(
 
     async def fake_extract_pr_context(payload: dict[str, object], event_type: str):
         return (
-            {"owner": "langchain-ai", "name": "open-swe"},
+            {"owner": "langchain-ai", "name": "alephat"},
             1244,
-            "open-swe/00000000-0000-0000-0000-000000000001",
+            "alephat/00000000-0000-0000-0000-000000000001",
             "external-user",
-            "https://github.com/langchain-ai/open-swe/pull/1244",
+            "https://github.com/moule3053/alephat/pull/1244",
             9,
             None,
         )
@@ -1307,7 +1305,7 @@ def test_process_github_pr_comment_without_email_skips(
 
     async def fake_fetch_comments(repo_config: dict[str, str], pr_number: int, *, token: str):
         captured["fetch_token"] = token
-        return [{"body": "@open-swe review", "author": "external-user", "created_at": "now"}]
+        return [{"body": "@alephat review", "author": "external-user", "created_at": "now"}]
 
     async def fake_trigger_or_queue_run(*args, **kwargs) -> None:
         captured["triggered"] = {"args": args, "kwargs": kwargs}
@@ -1323,7 +1321,7 @@ def test_process_github_pr_comment_without_email_skips(
     asyncio.run(
         github_webhooks.process_github_pr_comment(
             {
-                "comment": {"id": 9, "body": "@open-swe review"},
+                "comment": {"id": 9, "body": "@alephat review"},
                 "sender": {"login": "external-user", "id": 123},
             },
             "issue_comment",
@@ -1400,10 +1398,10 @@ def test_process_github_issue_uses_resolved_user_token_for_reaction(monkeypatch)
                     "number": 42,
                     "title": "Fix the flaky test",
                     "body": "The test is failing intermittently.",
-                    "html_url": "https://github.com/langchain-ai/open-swe/issues/42",
+                    "html_url": "https://github.com/moule3053/alephat/issues/42",
                 },
-                "comment": {"id": 999, "body": "@openswe please handle this"},
-                "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+                "comment": {"id": 999, "body": "@alephat please handle this"},
+                "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
                 "sender": {"login": "octocat"},
             },
             "issue_comment",
@@ -1483,21 +1481,21 @@ def test_process_github_issue_existing_thread_uses_followup_prompt(monkeypatch) 
                     "number": 42,
                     "title": "Fix the flaky test",
                     "body": "The test is failing intermittently.",
-                    "html_url": "https://github.com/langchain-ai/open-swe/issues/42",
+                    "html_url": "https://github.com/moule3053/alephat/issues/42",
                 },
                 "comment": {
                     "id": 999,
-                    "body": "@openswe please handle this",
+                    "body": "@alephat please handle this",
                     "user": {"login": "octocat"},
                 },
-                "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+                "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
                 "sender": {"login": "octocat"},
             },
             "issue_comment",
         )
     )
 
-    assert captured["prompt"] == "**octocat:**\n@openswe please handle this"
+    assert captured["prompt"] == "**octocat:**\n@alephat please handle this"
     prompt = cast(str, captured["prompt"])
     assert "## Repository" not in prompt
 
@@ -1524,8 +1522,8 @@ def test_github_webhook_routes_pr_comment_review_to_agent(monkeypatch) -> None:
                 "number": 1244,
                 "pull_request": {"url": "https://api.github.com/repos/x/y/pulls/1244"},
             },
-            "comment": {"id": 9, "body": "@open-swe review"},
-            "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+            "comment": {"id": 9, "body": "@alephat review"},
+            "repository": {"owner": {"login": "langchain-ai"}, "name": "alephat"},
             "sender": {"login": "octocat"},
         },
     )
@@ -1557,7 +1555,7 @@ def test_github_webhook_routes_pr_review_request_comment_to_agent(monkeypatch) -
                 "number": 1244,
                 "pull_request": {"url": "https://api.github.com/repos/x/y/pulls/1244"},
             },
-            "comment": {"id": 9, "body": "@open-swe review"},
+            "comment": {"id": 9, "body": "@alephat review"},
             "repository": {"owner": {"login": "langchain-ai"}, "name": "public-demo"},
             "sender": {"login": "octocat"},
         },

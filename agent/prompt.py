@@ -7,8 +7,8 @@ from pathlib import Path
 from deepagents import HarnessProfile, register_harness_profile
 
 from .utils.authorship import (
-    OPEN_SWE_BOT_EMAIL,
-    OPEN_SWE_BOT_NAME,
+    ALEPHAT_BOT_EMAIL,
+    ALEPHAT_BOT_NAME,
     CollaboratorIdentity,
     build_pr_attribution_footer,
 )
@@ -17,7 +17,7 @@ from .utils.github_comments import UNTRUSTED_GITHUB_COMMENT_OPEN_TAG
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT_PATH = os.environ.get("DEFAULT_PROMPT_PATH")
-ENABLE_TODOS_ENV_VAR = "OPEN_SWE_ENABLE_TODOS"
+ENABLE_TODOS_ENV_VAR = "ALEPHAT_ENABLE_TODOS"
 
 
 def _env_flag(name: str) -> bool:
@@ -32,7 +32,7 @@ HARNESS_EXCLUDED_TOOLS: frozenset[str] = _harness_excluded_tools()
 
 # Provider keys the harness profile is registered under. deepagents resolves a
 # pre-built model's profile by `provider:identifier` then a provider-only
-# fallback, so registering per provider makes the Open SWE base prompt replace
+# fallback, so registering per provider makes the Alephat base prompt replace
 # deepagents' generic base regardless of which supported provider the team or
 # profile selects for the agent.
 HARNESS_PROFILE_KEYS: tuple[str, ...] = ("anthropic", "openai", "google_genai", "fireworks")
@@ -70,10 +70,10 @@ def _load_default_prompt() -> str:
 
 # Static, run-invariant guidance shared by the main agent and its subagents.
 # Registered as the harness profile's `base_system_prompt`, it REPLACES
-# deepagents' generic base prompt so there is a single Open SWE voice. The
+# deepagents' generic base prompt so there is a single Alephat voice. The
 # per-thread, main-agent-specific prompt (working dir, repo setup, PR workflow,
 # source-channel reply) is layered in front of this via `construct_system_prompt`.
-OPEN_SWE_SHARED_BASE = """You are **Open SWE**, an open-source agent built on LangGraph and Deep Agents, operating in a remote, git-backed Linux sandbox invoked from Slack, Linear, or GitHub.
+ALEPHAT_SHARED_BASE = """You are **Alephat**, an open-source agent built on LangGraph and Deep Agents, operating in a remote, git-backed Linux sandbox invoked from Slack, Linear, or GitHub.
 
 ### Core Behavior
 
@@ -162,7 +162,7 @@ SELF_AWARENESS_SECTION = """---
 
 ### About You
 
-Your own source code lives at `langchain-ai/open-swe` on GitHub. Only when the user is clearly talking about *yourself* — modifying "yourself", "your code", "your prompt", "your behavior", "the open-swe repo", or "open-swe" — should you target `langchain-ai/open-swe`. For every other request (one naming a different repo, or naming none and not about you), defer to the default-repository guidance in the Custom Instructions below."""
+Your own source code lives at `moule3053/alephat` on GitHub. Only when the user is clearly talking about *yourself* — modifying "yourself", "your code", "your prompt", "your behavior", "the alephat repo", or "alephat" — should you target `moule3053/alephat`. For every other request (one naming a different repo, or naming none and not about you), defer to the default-repository guidance in the Custom Instructions below."""
 
 
 REPO_SETUP_SECTION = """---
@@ -180,7 +180,7 @@ Before any task that changes code, set up the repo in your sandbox, in order:
    ```
 
    This authors every commit. It is required for CI (e.g. Vercel preview deploys reject commits whose author email can't be resolved to a GitHub account; this email resolves). Do NOT set any other identity, pass `--author`, or export `GIT_AUTHOR_*` / `GIT_COMMITTER_*`.
-4. **Choose a thread-stable branch** like `open-swe/<short-task-slug>`. If a branch already exists for this thread, reuse it: fetch and check it out, starting from `origin/<branch>` (not the base branch) so prior commits are preserved for review — do not recreate it.
+4. **Choose a thread-stable branch** like `alephat/<short-task-slug>`. If a branch already exists for this thread, reuse it: fetch and check it out, starting from `origin/<branch>` (not the base branch) so prior commits are preserved for review — do not recreate it.
 5. **Read `AGENTS.md`** — immediately after cloning, check for `AGENTS.md` at the repo root. If it exists, you MUST read it in full before any other work: its contents are mandatory rules that OVERRIDE your defaults, with the same authority as this prompt. If it doesn't exist, skip this.
 
 Complete all of these before any other work."""
@@ -271,7 +271,7 @@ COLLABORATION_TEMPLATE = """---
 
 ### Collaborative Attribution
 
-This run was triggered by **{display_name}**. You author the work **as them** — their git identity is configured in Repository Setup, so every commit and the PR are attributed to them. Credit open-swe as the collaborator:
+This run was triggered by **{display_name}**. You author the work **as them** — their git identity is configured in Repository Setup, so every commit and the PR are attributed to them. Credit alephat as the collaborator:
 
 - **Commits**: append this trailer verbatim (on its own line, a blank line after the body) to every commit you author, including follow-ups:
 
@@ -279,7 +279,7 @@ This run was triggered by **{display_name}**. You author the work **as them** �
   {bot_coauthor_trailer}
   ```
 
-- **PR body**: append this line at the bottom of the PR description (blank line before it) when you open/update the draft PR; don't duplicate it if present. If the body already has a `Made by [Open SWE]` footer pointing at a different link, or a legacy footer like `_Opened collaboratively by {display_name} and open-swe._`, replace that existing footer with this line instead of appending a second footer:
+- **PR body**: append this line at the bottom of the PR description (blank line before it) when you open/update the draft PR; don't duplicate it if present. If the body already has a `Made by [Alephat]` footer pointing at a different link, or a legacy footer like `_Opened collaboratively by {display_name} and alephat._`, replace that existing footer with this line instead of appending a second footer:
 
   ```
   {pr_attribution_footer}
@@ -297,7 +297,7 @@ def _render_collaboration_section(
     return COLLABORATION_TEMPLATE.format(
         display_name=identity.display_name,
         pr_attribution_footer=build_pr_attribution_footer(thread_url),
-        bot_coauthor_trailer=f"Co-authored-by: {OPEN_SWE_BOT_NAME} <{OPEN_SWE_BOT_EMAIL}>",
+        bot_coauthor_trailer=f"Co-authored-by: {ALEPHAT_BOT_NAME} <{ALEPHAT_BOT_EMAIL}>",
     )
 
 
@@ -322,7 +322,7 @@ def _render_repo_instructions_section(instructions: str | None) -> str:
     )
 
 
-# Per-thread, main-agent prompt layered in front of OPEN_SWE_SHARED_BASE. Holds
+# Per-thread, main-agent prompt layered in front of ALEPHAT_SHARED_BASE. Holds
 # only run-specific content (working dir, commit identity, plan/collaboration/
 # repo toggles); standing guidance lives in the shared base above.
 SYSTEM_PROMPT_TEMPLATE = (
@@ -369,8 +369,8 @@ def construct_system_prompt(
         commit_identity_name = shlex.quote(triggering_user_identity.commit_name)
         commit_identity_email = shlex.quote(triggering_user_identity.commit_email)
     else:
-        commit_identity_name = shlex.quote(OPEN_SWE_BOT_NAME)
-        commit_identity_email = shlex.quote(OPEN_SWE_BOT_EMAIL)
+        commit_identity_name = shlex.quote(ALEPHAT_BOT_NAME)
+        commit_identity_email = shlex.quote(ALEPHAT_BOT_EMAIL)
     return SYSTEM_PROMPT_TEMPLATE.format(
         working_dir=working_dir,
         linear_project_id=linear_project_id or "<PROJECT_ID>",
@@ -391,12 +391,12 @@ def construct_system_prompt(
     )
 
 
-def register_open_swe_harness_profile() -> None:
-    """Register Open SWE's harness profile so its base prompt replaces deepagents'.
+def register_alephat_harness_profile() -> None:
+    """Register Alephat's harness profile so its base prompt replaces deepagents'.
 
     Registered per supported provider, the profile's ``base_system_prompt``
-    (``OPEN_SWE_SHARED_BASE``) supplants deepagents' generic base prompt for the
-    main agent and its subagents, leaving a single Open SWE voice. The per-thread
+    (``ALEPHAT_SHARED_BASE``) supplants deepagents' generic base prompt for the
+    main agent and its subagents, leaving a single Alephat voice. The per-thread
     main-agent prompt is passed by the server via
     ``system_prompt=construct_system_prompt(...)`` and is layered in front of the
     shared base by deepagents. The shared base is intentionally neutral (no
@@ -406,11 +406,11 @@ def register_open_swe_harness_profile() -> None:
     re-registrations under the same key.
     """
     profile = HarnessProfile(
-        base_system_prompt=OPEN_SWE_SHARED_BASE,
+        base_system_prompt=ALEPHAT_SHARED_BASE,
         excluded_tools=HARNESS_EXCLUDED_TOOLS,
     )
     for key in HARNESS_PROFILE_KEYS:
         register_harness_profile(key, profile)
 
 
-register_open_swe_harness_profile()
+register_alephat_harness_profile()

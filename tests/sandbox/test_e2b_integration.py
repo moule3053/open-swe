@@ -64,13 +64,13 @@ def test_create_e2b_sandbox_uses_default_timeout(monkeypatch):
 
 def test_create_e2b_sandbox_uses_template(monkeypatch):
     monkeypatch.setenv("E2B_API_KEY", "api-key")
-    monkeypatch.setenv("E2B_TEMPLATE", "open-swe-template")
+    monkeypatch.setenv("E2B_TEMPLATE", "alephat-template")
     module = _load_e2b_module(monkeypatch)
 
     module.create_e2b_sandbox()
 
     assert _FakeSandbox.create_calls == [
-        {"template": "open-swe-template", "timeout": 3600, "api_key": "api-key"}
+        {"template": "alephat-template", "timeout": 3600, "api_key": "api-key"}
     ]
 
 

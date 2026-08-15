@@ -42,7 +42,7 @@ async def test_list_workflow_push_approvals_returns_records_for_owner(monkeypatc
             "fp-1": {
                 "fingerprint": "fp-1",
                 "status": "pending",
-                "repo": "langchain-ai/open-swe",
+                "repo": "moule3053/alephat",
                 "branch": "feature",
                 "base_sha": "base",
                 "head_sha": "head",
@@ -71,7 +71,7 @@ async def test_list_workflow_push_approvals_returns_records_for_owner(monkeypatc
         {
             "fingerprint": "fp-1",
             "status": "pending",
-            "repo": "langchain-ai/open-swe",
+            "repo": "moule3053/alephat",
             "branch": "feature",
             "baseSha": "base",
             "headSha": "head",

@@ -90,7 +90,7 @@ def _run_process(
 def test_linear_configurable_carries_github_login() -> None:
     configurable, _upsert, resolved_email, _content = _run_process(
         _issue_data(user_email="zhen@example.com"),
-        {"owner": "langchain-ai", "name": "open-swe"},
+        {"owner": "langchain-ai", "name": "alephat"},
     )
 
     assert resolved_email == "zhen@example.com"
@@ -102,7 +102,7 @@ def test_linear_configurable_carries_github_login() -> None:
 def test_linear_upsert_tags_thread_with_login() -> None:
     _configurable, upsert, _email, _content = _run_process(
         _issue_data(user_email="zhen@example.com"),
-        {"owner": "langchain-ai", "name": "open-swe"},
+        {"owner": "langchain-ai", "name": "alephat"},
     )
 
     assert upsert["github_login"] == "zhen"
@@ -112,7 +112,7 @@ def test_linear_upsert_tags_thread_with_login() -> None:
 def test_linear_omits_login_when_unmapped() -> None:
     configurable, upsert, resolved_email, _content = _run_process(
         _issue_data(user_email="nobody@example.com"),
-        {"owner": "langchain-ai", "name": "open-swe"},
+        {"owner": "langchain-ai", "name": "alephat"},
     )
 
     assert resolved_email == "nobody@example.com"
@@ -123,7 +123,7 @@ def test_linear_omits_login_when_unmapped() -> None:
 def test_linear_issue_prompt_mentions_pr_references_and_conventions() -> None:
     _configurable, _upsert, _email, content = _run_process(
         _issue_data(user_email="zhen@example.com"),
-        {"owner": "langchain-ai", "name": "open-swe"},
+        {"owner": "langchain-ai", "name": "alephat"},
     )
 
     blocks = cast(list[object], content)

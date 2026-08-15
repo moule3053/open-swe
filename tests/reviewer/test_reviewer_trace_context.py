@@ -72,7 +72,7 @@ class _FakeLangSmithClient:
                 _run(
                     f"turn-{thread_id}",
                     thread_id,
-                    metadata={"repository_name": "langchain-ai/open-swe"},
+                    metadata={"repository_name": "moule3053/alephat"},
                     inputs={"message": "Need to update reviewer.py"},
                     outputs={"message": "Edited reviewer.py after checking edge cases."},
                 )
@@ -93,9 +93,9 @@ class _CapturingSandbox:
 
 def _config(**overrides: Any) -> dict[str, Any]:
     configurable: dict[str, Any] = {
-        "repo": {"owner": "langchain-ai", "name": "open-swe"},
+        "repo": {"owner": "moule3053", "name": "alephat"},
         "pr_number": 7,
-        "pr_url": "https://github.com/langchain-ai/open-swe/pull/7",
+        "pr_url": "https://github.com/moule3053/alephat/pull/7",
         "branch_name": "feature/trace-resolution",
         "head_sha": "abc1234567890abcdef",
         "base_sha": "def1234567890abcdef",
@@ -135,8 +135,8 @@ async def test_prepare_pr_trace_context_resolves_on_branch_alone() -> None:
         )
 
     assert result is not None
-    assert result.file_path == "/workspace/.open-swe/review-author-trace.json"
-    assert sandbox.uploaded_path == "/workspace/.open-swe/review-author-trace.json"
+    assert result.file_path == "/workspace/.alephat/review-author-trace.json"
+    assert sandbox.uploaded_path == "/workspace/.alephat/review-author-trace.json"
     assert result.thread_id == "thread-1"
     assert result.confidence == 0.9
     assert result.evidence == ["branch:feature/trace-resolution"]
@@ -146,7 +146,7 @@ async def test_prepare_pr_trace_context_resolves_on_branch_alone() -> None:
     assert any('search("feature/trace-resolution")' in f for f in fake_client.filters)
     # Branch search is scoped to the repo so a same-named branch elsewhere can't match.
     assert any(
-        'search("feature/trace-resolution")' in f and 'search("langchain-ai/open-swe")' in f
+        'search("feature/trace-resolution")' in f and 'search("moule3053/alephat")' in f
         for f in fake_client.filters
     )
     # Thread runs use documented metadata key/value filter syntax, not has(metadata, ...).
@@ -247,7 +247,7 @@ async def test_resolve_pr_trace_reports_reason_when_unresolved() -> None:
 def test_format_pr_trace_context_prompt_points_reviewer_at_file() -> None:
     prompt = format_pr_trace_context_prompt(
         PRTraceContext(
-            file_path="/workspace/.open-swe/review-author-trace.json",
+            file_path="/workspace/.alephat/review-author-trace.json",
             thread_id="thread-1",
             confidence=0.87,
             evidence=["branch:feature/x"],
@@ -258,5 +258,5 @@ def test_format_pr_trace_context_prompt_points_reviewer_at_file() -> None:
 
     assert "grep" in prompt
     assert "read_file" in prompt
-    assert "/workspace/.open-swe/review-author-trace.json" in prompt
+    assert "/workspace/.alephat/review-author-trace.json" in prompt
     assert "do not publish a trace summary" in prompt

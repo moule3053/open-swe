@@ -47,8 +47,8 @@ class ReviewerEvalConfig(TypedDict):
 
 
 DEFAULT_REVIEWER_EVAL_CONFIG: ReviewerEvalConfig = {
-    "dataset_name": "openswe-reviewer-v1",
-    "experiment_prefix": "openswe-review-confidence",
+    "dataset_name": "alephat-reviewer-v1",
+    "experiment_prefix": "alephat-review-confidence",
     "max_concurrency": 5,
     "langsmith_project": DEFAULT_EVAL_PROJECT,
     "langgraph_url": "",

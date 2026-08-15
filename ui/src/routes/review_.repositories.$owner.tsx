@@ -91,10 +91,10 @@ function RepositoriesOwnerPage() {
       title={owner}
       description={
         canEdit
-          ? "Choose which repositories run Open SWE Review automatically. All installed repositories remain available for on-demand reviews."
+          ? "Choose which repositories run Alephat Review automatically. All installed repositories remain available for on-demand reviews."
           : "Automatic review settings are read-only for non-admins."
       }
-      backTo={{ to: "/review", label: "Back to Open SWE Review" }}
+      backTo={{ to: "/review", label: "Back to Alephat Review" }}
     >
       <section className="space-y-3">
         <div className="flex items-center justify-between">

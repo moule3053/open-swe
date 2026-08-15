@@ -20,13 +20,13 @@ def _document(documents: list[dict], kind: str, name: str) -> dict:
 
 def test_postgresql_uses_gke_persistent_disk():
     documents = _documents("postgresql.yaml")
-    claim = _document(documents, "PersistentVolumeClaim", "openswe-postgresql-data")
-    stateful_set = _document(documents, "StatefulSet", "openswe-postgresql")
+    claim = _document(documents, "PersistentVolumeClaim", "alephat-postgresql-data")
+    stateful_set = _document(documents, "StatefulSet", "alephat-postgresql")
 
     assert claim["spec"]["storageClassName"] == "standard-rwo"
     assert claim["spec"]["resources"]["requests"]["storage"] == "20Gi"
     volume = stateful_set["spec"]["template"]["spec"]["volumes"][0]
-    assert volume["persistentVolumeClaim"]["claimName"] == "openswe-postgresql-data"
+    assert volume["persistentVolumeClaim"]["claimName"] == "alephat-postgresql-data"
     assert "emptyDir" not in volume
 
 

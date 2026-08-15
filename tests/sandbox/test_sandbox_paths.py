@@ -70,9 +70,9 @@ def test_resolve_repo_dir_uses_provider_work_dir() -> None:
         writable_dirs={"/workspace"},
     )
 
-    repo_dir = resolve_repo_dir(cast(SandboxBackendProtocol, backend), "open-swe")
+    repo_dir = resolve_repo_dir(cast(SandboxBackendProtocol, backend), "alephat")
 
-    assert repo_dir == "/workspace/open-swe"
+    assert repo_dir == "/workspace/alephat"
     assert backend.commands == ["test -d /workspace && test -w /workspace"]
 
 
@@ -116,7 +116,7 @@ async def test_aresolve_repo_dir_offloads_sync_resolution() -> None:
         writable_dirs={"/home/daytona"},
     )
 
-    repo_dir = await aresolve_repo_dir(cast(SandboxBackendProtocol, backend), "open-swe")
+    repo_dir = await aresolve_repo_dir(cast(SandboxBackendProtocol, backend), "alephat")
 
-    assert repo_dir == "/home/daytona/open-swe"
+    assert repo_dir == "/home/daytona/alephat"
     assert backend.commands == ["test -d /home/daytona && test -w /home/daytona"]

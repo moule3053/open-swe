@@ -271,13 +271,13 @@ def test_thread_summary_includes_pr_and_diff_stats() -> None:
     summary = thread_api._thread_summary(
         _thread_with_metadata(
             {
-                "repo_full_name": "langchain-ai/open-swe",
+                "repo_full_name": "moule3053/alephat",
                 "title": "Add feature",
                 "pr_number": 42,
-                "pr_url": "https://github.com/langchain-ai/open-swe/pull/42",
+                "pr_url": "https://github.com/moule3053/alephat/pull/42",
                 "pr_state": "draft",
                 "pr_title": "feat: add feature",
-                "branch_name": "open-swe/feature",
+                "branch_name": "alephat/feature",
                 "base_branch": "main",
                 "diff_stats": {"files": 3, "additions": 10, "deletions": 2},
             }
@@ -288,9 +288,9 @@ def test_thread_summary_includes_pr_and_diff_stats() -> None:
         "number": 42,
         "title": "feat: add feature",
         "state": "draft",
-        "headRef": "open-swe/feature",
+        "headRef": "alephat/feature",
         "baseRef": "main",
-        "url": "https://github.com/langchain-ai/open-swe/pull/42",
+        "url": "https://github.com/moule3053/alephat/pull/42",
     }
     assert summary["diffStats"] == {"files": 3, "additions": 10, "deletions": 2}
 
@@ -407,12 +407,12 @@ async def test_recovery_patch_downloads_generated_patch(monkeypatch) -> None:
             assert "repo" in command
             assert timeout == thread_api._RECOVERY_PATCH_TIMEOUT_SECONDS
             return SimpleNamespace(
-                output=json.dumps({"ok": True, "path": "/tmp/open-swe-tid.patch", "size": 11}),
+                output=json.dumps({"ok": True, "path": "/tmp/alephat-tid.patch", "size": 11}),
                 exit_code=0,
             )
 
         def download_files(self, paths: list[str]):
-            assert paths == ["/tmp/open-swe-tid.patch"]
+            assert paths == ["/tmp/alephat-tid.patch"]
             return [SimpleNamespace(content=b"patch bytes")]
 
     monkeypatch.setattr(thread_api, "_authorized_thread", fake_authorized_thread)
@@ -421,7 +421,7 @@ async def test_recovery_patch_downloads_generated_patch(monkeypatch) -> None:
     content, filename = await thread_api.get_dashboard_thread_recovery_patch("tid", "octocat")
 
     assert content == b"patch bytes"
-    assert filename == "open-swe-tid.patch"
+    assert filename == "alephat-tid.patch"
 
 
 async def test_recovery_patch_rejects_empty_patch(monkeypatch) -> None:
@@ -431,7 +431,7 @@ async def test_recovery_patch_rejects_empty_patch(monkeypatch) -> None:
     class FakeSandbox:
         def execute(self, command: str, *, timeout: int | None = None):
             return SimpleNamespace(
-                output=json.dumps({"ok": True, "path": "/tmp/open-swe-tid.patch", "size": 0}),
+                output=json.dumps({"ok": True, "path": "/tmp/alephat-tid.patch", "size": 0}),
                 exit_code=0,
             )
 
@@ -455,7 +455,7 @@ async def test_recovery_patch_enforces_size_limit(monkeypatch) -> None:
                 output=json.dumps(
                     {
                         "ok": True,
-                        "path": "/tmp/open-swe-tid.patch",
+                        "path": "/tmp/alephat-tid.patch",
                         "size": thread_api._RECOVERY_PATCH_LIMIT_BYTES + 1,
                     }
                 ),
@@ -580,8 +580,8 @@ async def test_enrich_run_start_command_adds_web_handoff_for_slack_thread(monkey
     content = enriched["params"]["input"]["messages"][-1]["content"]
     assert content[0] == {"type": "text", "text": thread_api.DASHBOARD_HANDOFF_INSTRUCTION}
     assert content[1] == {"type": "text", "text": "@teammate: continue here"}
-    assert content[0]["text"].startswith("<open_swe_web_handoff>\n")
-    assert content[0]["text"].endswith("\n</open_swe_web_handoff>")
+    assert content[0]["text"].startswith("<alephat_web_handoff>\n")
+    assert content[0]["text"].endswith("\n</alephat_web_handoff>")
 
 
 async def test_enrich_run_start_command_adds_web_handoff_before_image_blocks(monkeypatch) -> None:

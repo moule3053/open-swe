@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from openswe_platform.harness import worker
-from openswe_platform.harness.sandboxes import ExecResult, SandboxRef
+from alephat_platform.harness import worker
+from alephat_platform.harness.sandboxes import ExecResult, SandboxRef
 
 
 def test_repository_setup_command_clones_selected_repo_at_sandbox_root():

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from agent.utils.authorship import (
-    OPEN_SWE_BOT_EMAIL,
-    OPEN_SWE_BOT_NAME,
+    ALEPHAT_BOT_EMAIL,
+    ALEPHAT_BOT_NAME,
     add_bot_coauthor_trailer,
     resolve_triggering_user_identity,
 )
 
-_BOT_TRAILER = f"Co-authored-by: {OPEN_SWE_BOT_NAME} <{OPEN_SWE_BOT_EMAIL}>"
+_BOT_TRAILER = f"Co-authored-by: {ALEPHAT_BOT_NAME} <{ALEPHAT_BOT_EMAIL}>"
 
 
 def test_add_bot_coauthor_trailer_appends_bot() -> None:

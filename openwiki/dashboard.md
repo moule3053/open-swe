@@ -1,9 +1,9 @@
 ---
 type: User Interface Architecture
 title: Dashboard and workspace management
-description: The Open SWE Vite/TanStack dashboard, its FastAPI API boundary, authenticated agent workflows, and workspace administration features.
+description: The Alephat Vite/TanStack dashboard, its FastAPI API boundary, authenticated agent workflows, and workspace administration features.
 resource: /ui/src
-tags: [open-swe, dashboard, ui, fastapi, administration]
+tags: [alephat, dashboard, ui, fastapi, administration]
 ---
 # Dashboard and workspace management
 

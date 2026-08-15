@@ -79,9 +79,9 @@ def _is_natural_language_plan_approval(text: str) -> bool:
 async def _slack_thread_allows_untagged_reply(
     channel_id: str, thread_ts: str, text: str, bot_user_id: str
 ) -> bool:
-    """Allow an untagged follow-up when Open SWE and exactly one human share the thread.
+    """Allow an untagged follow-up when Alephat and exactly one human share the thread.
 
-    Skipped when the message mentions any user other than Open SWE, so tagging a
+    Skipped when the message mentions any user other than Alephat, so tagging a
     different person still hands the turn to them rather than the agent.
     """
     if not channel_id or not thread_ts or not bot_user_id:
@@ -99,7 +99,7 @@ async def _slack_thread_allows_untagged_reply(
         if author == bot_user_id:
             bot_participated = True
             continue
-        # Skip other apps (GitHub/CI bots) — they are neither Open SWE nor a human participant.
+        # Skip other apps (GitHub/CI bots) — they are neither Alephat nor a human participant.
         if message.get("bot_id"):
             continue
         if isinstance(author, str) and author:
@@ -209,7 +209,7 @@ def _format_slack_thread_section(
 def _format_slack_run_links_section(thread_id: str) -> str:
     dashboard_url = common.dashboard_thread_url(thread_id)
     trace_url = get_langsmith_trace_url(thread_id)
-    lines = ["## Open SWE Links"]
+    lines = ["## Alephat Links"]
     if dashboard_url:
         lines.append(f"- Web: {dashboard_url}")
     if trace_url:
@@ -316,7 +316,7 @@ async def _notify_slack_processing_error(
         "Send another message and I'll try again."
     )
     if dashboard_url:
-        message += f" You can view the error in <{dashboard_url}|Open SWE Web>."
+        message += f" You can view the error in <{dashboard_url}|Alephat Web>."
     try:
         await common.post_slack_thread_reply(channel_id, thread_ts, message)
     except Exception:  # noqa: BLE001
@@ -482,7 +482,7 @@ async def _process_slack_mention_impl(
                 if image_block:
                     content_blocks.append(cast(dict[str, Any], image_block))
 
-    # Open SWE opens PRs as the triggering user, so a run only proceeds when we
+    # Alephat opens PRs as the triggering user, so a run only proceeds when we
     # have a valid user GitHub token. Users who have never signed in with
     # GitHub, and users whose stored authorization is no longer usable, are
     # blocked and prompted to set up via the dashboard. Bot-token-only

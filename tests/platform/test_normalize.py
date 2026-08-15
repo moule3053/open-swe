@@ -2,8 +2,8 @@ import hashlib
 import hmac
 import time
 
-from openswe_platform.common.enums import IngressCommand
-from openswe_platform.webhook.normalize import (
+from alephat_platform.common.enums import IngressCommand
+from alephat_platform.webhook.normalize import (
     normalize_github,
     normalize_slack,
     verify_github_signature,

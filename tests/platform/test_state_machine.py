@@ -1,8 +1,8 @@
 import pytest
 
-from openswe_platform.common.enums import TaskStatus
-from openswe_platform.common.errors import ConflictError
-from openswe_platform.common.state_machine import assert_task_transition, is_terminal
+from alephat_platform.common.enums import TaskStatus
+from alephat_platform.common.errors import ConflictError
+from alephat_platform.common.state_machine import assert_task_transition, is_terminal
 
 
 def test_queued_to_running():

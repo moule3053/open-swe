@@ -1,4 +1,4 @@
-"""Main entry point and graph factory for the Open SWE agent.
+"""Main entry point and graph factory for the Alephat agent.
 
 Resolves the model, ensures one sandbox per thread (simplified
 get-or-create-then-reconnect, no cross-process ``__creating__`` sentinel),
@@ -123,8 +123,8 @@ from .tools import (
 from .utils import ttl_cache
 from .utils.auth import resolve_github_token
 from .utils.authorship import (
-    OPEN_SWE_BOT_EMAIL,
-    OPEN_SWE_BOT_NAME,
+    ALEPHAT_BOT_EMAIL,
+    ALEPHAT_BOT_NAME,
     resolve_triggering_user_identity,
 )
 from .utils.dashboard_links import dashboard_plan_url, dashboard_thread_url
@@ -347,8 +347,8 @@ async def _refresh_github_proxy_or_recreate(
 async def _configure_git_identity(sandbox_backend: SandboxBackendProtocol) -> None:
     await asyncio.to_thread(
         sandbox_backend.execute,
-        f"git config --global user.name '{OPEN_SWE_BOT_NAME}' && "
-        f"git config --global user.email '{OPEN_SWE_BOT_EMAIL}'",
+        f"git config --global user.name '{ALEPHAT_BOT_NAME}' && "
+        f"git config --global user.email '{ALEPHAT_BOT_EMAIL}'",
     )
 
 

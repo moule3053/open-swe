@@ -1,9 +1,9 @@
 ---
 type: Runtime Architecture
 title: LangGraph runtime and agent assembly
-description: How Open SWE composes LangGraph graphs, FastAPI routers, durable dispatch, per-thread sandboxes, and Deep Agents factories for coding, review, chat, and scheduling.
+description: How Alephat composes LangGraph graphs, FastAPI routers, durable dispatch, per-thread sandboxes, and Deep Agents factories for coding, review, chat, and scheduling.
 resource: /langgraph.json
-tags: [open-swe, langgraph, deepagents, backend, runtime]
+tags: [alephat, langgraph, deepagents, backend, runtime]
 ---
 # LangGraph runtime and agent assembly
 
@@ -29,7 +29,7 @@ Source-specific routes in `agent/webhooks/` verify provider input, enforce sourc
 
 ## Coding graph assembly
 
-`agent/server.py:get_agent` builds a fresh Deep Agent for a run. Preparation middleware resolves run identity and configuration, obtains or reconnects the thread sandbox, writes relevant metadata/usage, and renders the system prompt. The graph has built-in Deep Agents filesystem, shell, todo, and subagent capabilities plus Open SWE tools for web/research, collaboration, planning, PR work, and optional server-side integrations.
+`agent/server.py:get_agent` builds a fresh Deep Agent for a run. Preparation middleware resolves run identity and configuration, obtains or reconnects the thread sandbox, writes relevant metadata/usage, and renders the system prompt. The graph has built-in Deep Agents filesystem, shell, todo, and subagent capabilities plus Alephat tools for web/research, collaboration, planning, PR work, and optional server-side integrations.
 
 The meaningful state boundary is per thread rather than per graph object: the agent factory is fresh per run, while sandbox identity and run metadata persist with the LangGraph thread. `ensure_sandbox_for_thread` reuses, pings, reconnects, or recreates the backend; `agent/utils/sandbox_state.py` maintains the process cache while durable metadata carries the sandbox ID. This design **depends on the execution and identity controls in [integrations and security](integrations-security.md)**.
 

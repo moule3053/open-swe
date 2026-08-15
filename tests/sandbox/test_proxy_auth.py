@@ -315,7 +315,7 @@ class TestRefreshProxyOnSandboxReuse:
                 "configurable": {
                     "__is_for_execution__": True,
                     "thread_id": "thread-123",
-                    "repo": {"owner": "langchain-ai", "name": "open-swe"},
+                    "repo": {"owner": "langchain-ai", "name": "alephat"},
                 },
                 "metadata": {},
             },

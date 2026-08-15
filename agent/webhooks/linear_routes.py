@@ -14,7 +14,7 @@ async def linear_webhook(  # noqa: PLR0911, PLR0912, PLR0915
 ) -> dict[str, str]:
     """Handle Linear webhooks.
 
-    Triggers a new LangGraph run when an issue gets the 'open-swe' label added.
+    Triggers a new LangGraph run when an issue gets the 'alephat' label added.
     """
     common.logger.info("Received Linear webhook")
     body = await request.body()
@@ -62,9 +62,9 @@ async def linear_webhook(  # noqa: PLR0911, PLR0912, PLR0915
         if comment_body.startswith(prefix):
             common.logger.debug("Ignoring webhook: comment is our own bot message")
             return {"status": "ignored", "reason": "Comment is our own bot message"}
-    if "@openswe" not in comment_body.lower():
-        common.logger.debug("Ignoring webhook: comment doesn't mention @openswe")
-        return {"status": "ignored", "reason": "Comment doesn't mention @openswe"}
+    if "@alephat" not in comment_body.lower():
+        common.logger.debug("Ignoring webhook: comment doesn't mention @alephat")
+        return {"status": "ignored", "reason": "Comment doesn't mention @alephat"}
 
     issue = data.get("issue", {})
     if not issue:

@@ -92,7 +92,7 @@ async def test_list_failing_check_runs_filters(monkeypatch: pytest.MonkeyPatch) 
                 {"name": "lint", "status": "completed", "conclusion": "failure"},
                 {"name": "test", "status": "completed", "conclusion": "success"},
                 {"name": "build", "status": "in_progress", "conclusion": None},
-                {"name": "Open SWE Auto-fix", "status": "completed", "conclusion": "failure"},
+                {"name": "Alephat Auto-fix", "status": "completed", "conclusion": "failure"},
             ]
         },
     )

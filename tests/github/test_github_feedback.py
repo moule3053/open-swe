@@ -59,7 +59,7 @@ def _reaction_payload(content: str = "+1", action: str = "created") -> dict[str,
     return {
         "action": action,
         "reaction": {"content": content},
-        "repository": {"owner": {"login": "langchain-ai"}, "name": "open-swe"},
+        "repository": {"owner": {"login": "moule3053"}, "name": "alephat"},
         "pull_request": {"number": 7},
         "comment": {"id": 123, "pull_request_url": "https://api.github.com/repos/o/r/pulls/7"},
         "sender": {"login": "reviewer"},
@@ -113,10 +113,10 @@ async def test_github_reaction_added_creates_langsmith_feedback(
     await process_github_reaction_added(_reaction_payload(), delivery_id="delivery-1")
 
     assert created["run_id"] == "run-1"
-    assert created["key"] == "github_reaction:langchain-ai/open-swe:reviewer:123"
+    assert created["key"] == "github_reaction:moule3053/alephat:reviewer:123"
     assert created["score"] == 1.0
     assert created["source_info"]["finding_id"] == "f1"
-    assert (("github_reaction_events", "langchain-ai/open-swe"), "delivery-1") in client.store.items
+    assert (("github_reaction_events", "moule3053/alephat"), "delivery-1") in client.store.items
 
 
 @pytest.mark.asyncio
@@ -124,9 +124,7 @@ async def test_github_reaction_removed_deletes_langsmith_feedback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = _FakeClient()
-    client.store.items[
-        (("github_reaction_state", "langchain-ai/open-swe"), "run-1:reviewer:123")
-    ] = {
+    client.store.items[(("github_reaction_state", "moule3053/alephat"), "run-1:reviewer:123")] = {
         "value": {
             "run_id": "run-1",
             "user_login": "reviewer",
@@ -165,10 +163,10 @@ async def test_github_reaction_removed_deletes_langsmith_feedback(
 
     assert deleted == {
         "run_id": "run-1",
-        "key": "github_reaction:langchain-ai/open-swe:reviewer:123",
+        "key": "github_reaction:moule3053/alephat:reviewer:123",
     }
     assert (
-        ("github_reaction_state", "langchain-ai/open-swe"),
+        ("github_reaction_state", "moule3053/alephat"),
         "run-1:reviewer:123",
     ) not in client.store.items
 

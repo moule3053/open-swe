@@ -27,7 +27,7 @@ _MAX_SESSION_RUNS = 200
 # searches are heavily rate limited by LangSmith, and the session that produced a
 # PR under review is recent regardless.
 _SEARCH_LOOKBACK_DAYS = 90
-_TRACE_FILE_RELATIVE_PATH = ".open-swe/review-author-trace.json"
+_TRACE_FILE_RELATIVE_PATH = ".alephat/review-author-trace.json"
 _GENERIC_BRANCHES = {
     "main",
     "master",

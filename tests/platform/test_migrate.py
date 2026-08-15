@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from openswe_platform.common.config import Settings
-from openswe_platform.migrate import _sync_development_defaults
+from alephat_platform.common.config import Settings
+from alephat_platform.migrate import _sync_development_defaults
 
 
 @pytest.mark.asyncio

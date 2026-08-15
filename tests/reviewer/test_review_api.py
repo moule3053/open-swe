@@ -88,7 +88,7 @@ def test_is_allowed_image_url_rejects_unsafe_urls():
     # Non-https scheme.
     assert not _is_allowed_image_url("http://github.com/user-attachments/assets/x")
     # github.com but not a user-attachment path.
-    assert not _is_allowed_image_url("https://github.com/langchain-ai/open-swe")
+    assert not _is_allowed_image_url("https://github.com/moule3053/alephat")
     # Arbitrary external host (SSRF guard).
     assert not _is_allowed_image_url("https://evil.example.com/x.png")
     # Lookalike host that merely contains the suffix substring.

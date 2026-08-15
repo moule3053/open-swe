@@ -60,20 +60,20 @@ def _default_base_image() -> str:
     image = os.environ.get("REPO_SNAPSHOT_BASE_IMAGE", "").strip()
     if not image:
         raise RepoSnapshotConfigError(
-            "REPO_SNAPSHOT_BASE_IMAGE must be set to the published Open SWE sandbox image"
+            "REPO_SNAPSHOT_BASE_IMAGE must be set to the published Alephat sandbox image"
         )
     return image
 
 
 def generate_dockerfile_template(full_name: str) -> str:
-    """Return a starter Dockerfile for a repo, extending the Open SWE base image."""
+    """Return a starter Dockerfile for a repo, extending the Alephat base image."""
     base = _default_base_image()
     return (
         f"# Dockerfile for {full_name}\n"
         "#\n"
         "# This image becomes the sandbox snapshot for runs targeting this repo.\n"
-        "# It MUST keep the tools Open SWE relies on (git, gh, the language\n"
-        "# toolchain, sfw), so extend the Open SWE base image rather than starting\n"
+        "# It MUST keep the tools Alephat relies on (git, gh, the language\n"
+        "# toolchain, sfw), so extend the Alephat base image rather than starting\n"
         "# from a bare OS image. Add only repo-specific dependencies below.\n"
         f"FROM {base}\n"
         "\n"
@@ -358,7 +358,7 @@ def _build_snapshot_sync(record: dict[str, Any], snapshot_name: str) -> tuple[st
     )
     client = SandboxClient(api_key=api_key, api_endpoint=_get_sandbox_api_endpoint())
     try:
-        with tempfile.TemporaryDirectory(prefix="openswe-snapshot-") as context_dir:
+        with tempfile.TemporaryDirectory(prefix="alephat-snapshot-") as context_dir:
             dockerfile_path = Path(context_dir) / "Dockerfile"
             dockerfile_path.write_text(record.get("dockerfile") or "")
             build_args = (
@@ -402,7 +402,7 @@ async def run_snapshot_build(full_name: str) -> None:
 
     owner, name = full_name.split("/", 1)
     timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
-    snapshot_name = f"openswe-{owner}-{name}-{timestamp}".replace("/", "-").lower()
+    snapshot_name = f"alephat-{owner}-{name}-{timestamp}".replace("/", "-").lower()
 
     try:
         snapshot_id, log_tail = await asyncio.to_thread(_build_snapshot_sync, record, snapshot_name)

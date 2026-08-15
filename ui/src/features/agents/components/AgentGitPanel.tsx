@@ -87,7 +87,7 @@ function commonDirPrefix(paths: Array<string>): string {
   return depth === 0 ? "" : `${base.slice(0, depth).join("/")}/`
 }
 
-const PANEL_STORAGE_WIDTH = "open-swe.gitpanel.width"
+const PANEL_STORAGE_WIDTH = "alephat.gitpanel.width"
 const PANEL_DEFAULT_WIDTH = 420
 const PANEL_MIN_WIDTH = 320
 // Keep at least this much room for the chat so the panel can grow to nearly the

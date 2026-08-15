@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from openswe_platform.common.config import clear_settings_cache
-from openswe_platform.harness.llm_client import (
+from alephat_platform.common.config import clear_settings_cache
+from alephat_platform.harness.llm_client import (
     DirectLLMClient,
     LiteLLMClient,
     _post_with_retry,
@@ -109,7 +109,7 @@ async def test_llm_request_retries_429(monkeypatch):
     async def no_sleep(_delay: float) -> None:
         return None
 
-    monkeypatch.setattr("openswe_platform.harness.llm_client.asyncio.sleep", no_sleep)
+    monkeypatch.setattr("alephat_platform.harness.llm_client.asyncio.sleep", no_sleep)
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         response = await _post_with_retry(client, "https://example.com/chat")
     assert response.status_code == 200

@@ -190,8 +190,8 @@ const config = defineConfig({
       },
       manifest: {
         id: "/",
-        name: "Open SWE",
-        short_name: "Open SWE",
+        name: "Alephat",
+        short_name: "Alephat",
         description: "Open-source coding agents for Slack, Linear, and GitHub.",
         start_url: "/",
         scope: "/",

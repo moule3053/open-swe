@@ -13,7 +13,7 @@ from deepagents.backends.protocol import SandboxBackendProtocol
 
 logger = logging.getLogger(__name__)
 
-_WORK_DIR_CACHE_ATTR = "_open_swe_resolved_work_dir"
+_WORK_DIR_CACHE_ATTR = "_alephat_resolved_work_dir"
 _PROVIDER_ATTR_NAMES = ("sandbox", "_sandbox")
 
 

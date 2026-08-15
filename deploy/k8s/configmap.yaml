@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: openswe-config
-  namespace: openswe
+  name: alephat-config
+  namespace: alephat
 data:
   DATABASE_URL: ""
-  DATABASE_HOST: "openswe-postgresql"
+  DATABASE_HOST: "alephat-postgresql"
   DATABASE_PORT: "5432"
-  DATABASE_NAME: "openswe"
-  DATABASE_USER: "openswe"
+  DATABASE_NAME: "alephat"
+  DATABASE_USER: "alephat"
   NATS_URL: "nats://nats:4222"
   LLM_MODE: "litellm"
   LITELLM_ENABLED: "true"

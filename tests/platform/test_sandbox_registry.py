@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from openswe_platform.common.enums import SandboxProvider
-from openswe_platform.harness.sandboxes import get_sandbox_provider
+from alephat_platform.common.enums import SandboxProvider
+from alephat_platform.harness.sandboxes import get_sandbox_provider
 
 
 @pytest.mark.parametrize(

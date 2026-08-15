@@ -2171,7 +2171,7 @@ wheels = [
 ]
 
 [[package]]
-name = "open-swe-agent"
+name = "alephat-agent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

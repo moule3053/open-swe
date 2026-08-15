@@ -33,7 +33,7 @@ jobs:
             shared
             cli
             web
-            open-swe
+            alephat
             docs
             deps
           requireScope: false

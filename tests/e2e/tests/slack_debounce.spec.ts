@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 
-// Feature: while Open SWE is busy, *untagged* follow-ups are debounced —
+// Feature: while Alephat is busy, *untagged* follow-ups are debounced —
 // coalesced onto the thread's message queue (for the active run to drain at its
 // next model call) instead of each halting and resuming the run. An explicit
 // @-mention is NOT debounced (it keeps interrupting immediately). Driven through
@@ -57,7 +57,7 @@ test.describe("Slack busy-thread interrupt debounce", () => {
   }) => {
     await request.post("/control/reset");
 
-    // Phase 1: open a two-party thread so Open SWE has participated (a
+    // Phase 1: open a two-party thread so Alephat has participated (a
     // prerequisite for untagged follow-ups to be accepted).
     const opened = await send(request, {
       text: "<@U0BOT> please add a greet() helper and open a PR",

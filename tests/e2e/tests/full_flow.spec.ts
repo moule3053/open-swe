@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 //   user asks in Slack -> real agent implements in a local sandbox -> opens a PR
 //   on the fake GitHub -> replies with the PR link in the SAME Slack thread.
 // Only the LLM is faked; all agent code runs for real via langgraph dev.
-test.describe("Open SWE full flow", () => {
+test.describe("Alephat full flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/mock/slack");
     await page.locator("#reset").click();
@@ -58,13 +58,13 @@ test.describe("Open SWE full flow", () => {
     await expect(page.locator('.pr[data-pr="1"]')).toContainText("greet.py");
   });
 
-  test("Slack breakout request starts a new top-level Open SWE thread", async ({ page }) => {
+  test("Slack breakout request starts a new top-level Alephat thread", async ({ page }) => {
     await page.locator("#text").fill("<@U0BOT> please break out adding a greet() helper into a separate thread");
     await page.locator("#send").click();
 
     const breakout = page
       .locator(".msg.bot")
-      .filter({ hasText: /Open SWE breakout thread:\* Add greet\(\) helper/ });
+      .filter({ hasText: /Alephat breakout thread:\* Add greet\(\) helper/ });
     await expect(breakout).toBeVisible({ timeout: 60_000 });
     const breakoutThreadTs = await breakout.getAttribute("data-thread-ts");
     expect(breakoutThreadTs).toBeTruthy();
@@ -74,7 +74,7 @@ test.describe("Open SWE full flow", () => {
       timeout: 60_000,
     });
     await expect(
-      page.locator(".msg.bot").filter({ hasText: "I started a separate Open SWE thread" }),
+      page.locator(".msg.bot").filter({ hasText: "I started a separate Alephat thread" }),
     ).toBeVisible({ timeout: 60_000 });
   });
 

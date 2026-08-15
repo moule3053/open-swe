@@ -205,4 +205,4 @@ async def test_slack_thread_reply_builds_option_blocks(monkeypatch: pytest.Monke
     actions = captured["blocks"][1]
     assert actions["type"] == "actions"
     assert [button["text"]["text"] for button in actions["elements"]] == ["A", "B"]
-    assert actions["elements"][0]["action_id"] == "open_swe_option_select"
+    assert actions["elements"][0]["action_id"] == "alephat_option_select"

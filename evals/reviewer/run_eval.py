@@ -37,7 +37,7 @@ from evals.reviewer.target import (
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path(__file__).with_name("config.toml")
-DEFAULT_LANGSMITH_PROJECT = "open-swe-evals"
+DEFAULT_LANGSMITH_PROJECT = "alephat-evals"
 ScoreMode = Literal["all_findings", "surfaced_findings"]
 Severity = Literal["low", "medium", "high", "critical"]
 _VALID_SCORE_MODES: set[str] = {"all_findings", "surfaced_findings"}
@@ -73,8 +73,8 @@ class ReviewerEvalConfig(TypedDict, total=False):
 
 
 DEFAULT_CONFIG: ReviewerEvalConfig = {
-    "dataset_name": "openswe-reviewer-v1",
-    "experiment_prefix": "openswe-reviewer-baseline",
+    "dataset_name": "alephat-reviewer-v1",
+    "experiment_prefix": "alephat-reviewer-baseline",
     "max_concurrency": 5,
     "langgraph_url": "",
     "langsmith_project": DEFAULT_LANGSMITH_PROJECT,

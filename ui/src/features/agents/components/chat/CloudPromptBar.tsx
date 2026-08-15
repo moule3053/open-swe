@@ -171,9 +171,9 @@ function fileToImageChunk(file: File): Promise<ImageChunk | null> {
   })
 }
 
-/** Web-adapted PromptBar from open-swe-app — local state, no Electron/Zustand deps. */
+/** Web-adapted PromptBar from alephat-app — local state, no Electron/Zustand deps. */
 export const CloudPromptBar = memo(function CloudPromptBarComponent({
-  placeholder = "Ask Open SWE to build, fix bugs, explore",
+  placeholder = "Ask Alephat to build, fix bugs, explore",
   compact = false,
   disabled = false,
   busy = false,

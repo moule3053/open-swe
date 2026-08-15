@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: openswe-harness-to-agent-sandbox
+  name: alephat-harness-to-agent-sandbox
   namespace: alephat-sandboxes
 spec:
   podSelector:
@@ -15,7 +15,7 @@ spec:
               kubernetes.io/metadata.name: alephat
           podSelector:
             matchLabels:
-              app: openswe-harness
+              app: alephat-harness
       ports:
         - protocol: TCP
           port: 8888

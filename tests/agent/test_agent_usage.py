@@ -130,7 +130,7 @@ async def test_reviewer_stats_snapshot_counts_surfaced_and_resolved_findings(mon
             "metadata": {
                 "kind": "reviewer",
                 "head_sha": "fixed-sha",
-                "pr": {"owner": "langchain-ai", "name": "open-swe", "number": 1},
+                "pr": {"owner": "langchain-ai", "name": "alephat", "number": 1},
                 "findings": [
                     {
                         "id": "f_1",

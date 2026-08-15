@@ -1,15 +1,15 @@
 ---
 type: Security Architecture
 title: Integrations, execution boundaries, and security controls
-description: Security and integration model for Open SWE sandboxes, GitHub identity, webhook verification, dashboard sessions, and optional server-side MCP or observability tools.
+description: Security and integration model for Alephat sandboxes, GitHub identity, webhook verification, dashboard sessions, and optional server-side MCP or observability tools.
 resource: /agent/integrations
-tags: [open-swe, security, integrations, sandbox, authentication]
+tags: [alephat, security, integrations, sandbox, authentication]
 ---
 # Integrations, execution boundaries, and security controls
 
 ## Isolation boundary: per-thread sandboxes
 
-Open SWE runs repository work in a sandbox backend selected by `SANDBOX_TYPE`. `agent/utils/sandbox.py` registers factories for LangSmith (the default), Daytona, Modal, Runloop, E2B, and local execution. The local provider deliberately has no isolation and is development-only; it should not be treated as a production-equivalent configuration.
+Alephat runs repository work in a sandbox backend selected by `SANDBOX_TYPE`. `agent/utils/sandbox.py` registers factories for LangSmith (the default), Daytona, Modal, Runloop, E2B, and local execution. The local provider deliberately has no isolation and is development-only; it should not be treated as a production-equivalent configuration.
 
 The coding graph keeps a sandbox stable for a thread across follow-ups. Process memory caches backend objects, while LangGraph thread metadata retains the durable sandbox ID. Reconnection logic pings/reuses/reconnects/recreates a backend as needed. This execution lifecycle **underpins the coding and review paths in [runtime architecture](runtime-architecture.md)** and makes a conversation-like task able to preserve its working environment.
 
@@ -17,7 +17,7 @@ The default LangSmith integration configures a GitHub proxy rather than placing 
 
 ## GitHub identity and repository access
 
-Open SWE resolves GitHub identity in dual mode: it prefers a user token made available through the configured OAuth/session path and falls back to a GitHub App installation token when necessary. User/credential handling is server-side; the dashboard provides GitHub OAuth endpoints while agent token resolution is implemented in `agent/utils/auth.py` and related utilities.
+Alephat resolves GitHub identity in dual mode: it prefers a user token made available through the configured OAuth/session path and falls back to a GitHub App installation token when necessary. User/credential handling is server-side; the dashboard provides GitHub OAuth endpoints while agent token resolution is implemented in `agent/utils/auth.py` and related utilities.
 
 GitHub event routes verify signatures before dispatch. Slack and Linear routes likewise verify their provider requests, and webhook routes enforce repository/source gates before they create work. Deterministic thread IDs then connect later messages to the right run. These checks **protect the external-entry workflows in [workflows](workflows.md)**; new triggers must preserve them rather than calling a graph directly.
 

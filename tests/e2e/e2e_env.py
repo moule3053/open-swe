@@ -26,7 +26,7 @@ FEATURE_FILE = "greet.py"
 
 # Fixed Slack identifiers so the mock UI and assertions are deterministic.
 BOT_USER_ID = "U0BOT"
-BOT_USERNAME = "open-swe"
+BOT_USERNAME = "alephat"
 DEMO_CHANNEL = "C_DEMO"
 HUMAN_USER = "U_HUMAN"
 

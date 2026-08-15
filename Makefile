@@ -54,13 +54,13 @@ platform-ps:
 
 # Host processes (use platform-deps for postgres/nats first)
 platform-api:
-	uv run uvicorn openswe_platform.api.app:app --reload --port 8080
+	uv run uvicorn alephat_platform.api.app:app --reload --port 8080
 
 platform-webhook:
-	uv run uvicorn openswe_platform.webhook.app:app --reload --port 8081
+	uv run uvicorn alephat_platform.webhook.app:app --reload --port 8081
 
 platform-harness:
-	uv run python -m openswe_platform.harness.worker
+	uv run python -m alephat_platform.harness.worker
 
 install:
 	uv sync --extra dev
@@ -103,7 +103,7 @@ format-check:
 	uv run ruff format $(PYTHON_FILES) --check
 
 typecheck:
-	npx --yes basedpyright agent openswe_platform tests
+	npx --yes basedpyright agent alephat_platform tests
 
 ######################
 # HELP
@@ -124,7 +124,7 @@ help:
 	@echo 'install                      - install dependencies (incl. dev extras)'
 	@echo 'format                       - run code formatters'
 	@echo 'lint                         - run linters'
-	@echo 'typecheck                    - run basedpyright on agent/ openswe_platform/ tests/'
+	@echo 'typecheck                    - run basedpyright on agent/ alephat_platform/ tests/'
 	@echo 'test                         - run unit tests'
 	@echo 'integration_tests            - run integration tests'
 	@echo '----'

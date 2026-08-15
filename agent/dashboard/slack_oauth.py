@@ -27,7 +27,7 @@ SLACK_CLIENT_SECRET = os.environ.get("SLACK_CLIENT_SECRET", "")
 # Optional: restrict linking to a single workspace (the Slack team id, T...).
 SLACK_TEAM_ID = os.environ.get("SLACK_TEAM_ID", "")
 
-SLACK_STATE_COOKIE_NAME = "osw_slack_oauth_state"
+SLACK_STATE_COOKIE_NAME = "alephat_slack_oauth_state"
 SLACK_OIDC_SCOPES = "openid email profile"
 
 _AUTHORIZE_URL = "https://slack.com/openid/connect/authorize"

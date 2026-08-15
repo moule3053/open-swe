@@ -1,80 +1,80 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openswe-webhook
-  namespace: openswe
+  name: alephat-webhook
+  namespace: alephat
   labels:
-    app: openswe-webhook
+    app: alephat-webhook
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: openswe-webhook
+      app: alephat-webhook
   template:
     metadata:
       labels:
-        app: openswe-webhook
+        app: alephat-webhook
     spec:
       initContainers:
         - name: migrate
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
-          command: ["python", "-m", "openswe_platform.migrate"]
+          command: ["python", "-m", "alephat_platform.migrate"]
           env:
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_URL
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_HOST
             - name: DATABASE_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_NAME
             - name: DATABASE_USER
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_USER
       containers:
         - name: webhook
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
-          command: ["uvicorn", "openswe_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
+          command: ["uvicorn", "alephat_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
           ports:
             - containerPort: 8081
               name: http
           envFrom:
             - configMapRef:
-                name: openswe-config
+                name: alephat-config
           env:
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: SERVICE_NAME
               value: webhook
             - name: GITHUB_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: GITHUB_WEBHOOK_SECRET
                   optional: true
             - name: SLACK_SIGNING_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: SLACK_SIGNING_SECRET
                   optional: true
           readinessProbe:
@@ -100,11 +100,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: openswe-webhook
-  namespace: openswe
+  name: alephat-webhook
+  namespace: alephat
 spec:
   selector:
-    app: openswe-webhook
+    app: alephat-webhook
   ports:
     - name: http
       port: 80

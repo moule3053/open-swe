@@ -57,7 +57,7 @@ async def test_slack_processing_error_posts_dashboard_link(
             "text": "help",
             "bot_user_id": "BOT",
         },
-        {"owner": "langchain-ai", "name": "open-swe"},
+        {"owner": "langchain-ai", "name": "alephat"},
     )
 
     upsert.assert_awaited_once()
@@ -72,7 +72,7 @@ async def test_slack_processing_error_posts_dashboard_link(
     await_args = post_reply.await_args
     assert await_args is not None
     assert await_args.args[:2] == ("C1", "123.45")
-    assert "<https://ui/t1|Open SWE Web>" in await_args.args[2]
+    assert "<https://ui/t1|Alephat Web>" in await_args.args[2]
 
 
 async def test_natural_language_plan_approval_uses_shared_approval_flow(
@@ -240,8 +240,8 @@ async def test_untagged_reply_blocked_when_bot_absent(
 async def test_untagged_reply_blocked_when_only_third_party_bot_present(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # One human + a GitHub/CI bot reply, but no Open SWE message: not a two-party
-    # Open SWE thread, so an untagged follow-up must not start a run.
+    # One human + a GitHub/CI bot reply, but no Alephat message: not a two-party
+    # Alephat thread, so an untagged follow-up must not start a run.
     messages = [
         {"ts": "1.0", "user": "UHUMAN"},
         {"ts": "1.1", "user": "UGH", "bot_id": "BGITHUB"},

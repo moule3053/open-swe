@@ -194,7 +194,7 @@ async def test_circuit_breaker_posts_one_user_notification() -> None:
         "configurable": {
             "slack_thread": {"channel_id": "C123", "thread_ts": "171.123"},
             "linear_issue": {"id": "lin-1"},
-            "repo": {"owner": "langchain-ai", "name": "open-swe"},
+            "repo": {"owner": "langchain-ai", "name": "alephat"},
             "pr_number": 7,
         }
     }

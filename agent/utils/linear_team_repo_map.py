@@ -1,11 +1,11 @@
 from typing import Any
 
 LINEAR_TEAM_TO_REPO: dict[str, dict[str, Any] | dict[str, str]] = {
-    "Brace's test workspace": {"owner": "langchain-ai", "name": "open-swe"},
+    "Brace's test workspace": {"owner": "moule3053", "name": "alephat"},
     "Yogesh-dev": {
         "projects": {
-            "open-swe-v3-test": {"owner": "aran-yogesh", "name": "nimedge"},
-            "open-swe-dev-test": {"owner": "aran-yogesh", "name": "TalkBack"},
+            "alephat-v3-test": {"owner": "aran-yogesh", "name": "nimedge"},
+            "alephat-dev-test": {"owner": "aran-yogesh", "name": "TalkBack"},
         },
         "default": {
             "owner": "aran-yogesh",
@@ -25,6 +25,6 @@ LINEAR_TEAM_TO_REPO: dict[str, dict[str, Any] | dict[str, str]] = {
         "default": {"owner": "langchain-ai", "name": "ai-sdr"},
     },
     "Docs": {"default": {"owner": "langchain-ai", "name": "docs"}},
-    "Open SWE": {"default": {"owner": "langchain-ai", "name": "open-swe"}},
+    "Alephat": {"default": {"owner": "moule3053", "name": "alephat"}},
     "LangSmith Deployment": {"default": {"owner": "langchain-ai", "name": "langgraph-api"}},
 }

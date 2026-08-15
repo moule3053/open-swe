@@ -12,7 +12,7 @@ router = APIRouter()
 async def github_webhook(
     request: common.Request, background_tasks: common.BackgroundTasks
 ) -> dict[str, str]:
-    """Handle GitHub webhooks for issue and PR events that tag @open-swe."""
+    """Handle GitHub webhooks for issue and PR events that tag @alephat."""
     body = await request.body()
 
     signature = request.headers.get("X-Hub-Signature-256", "")
@@ -101,9 +101,9 @@ async def github_webhook(
                 return {"status": "ignored", "reason": "Issue edit did not change title or body"}
 
         issue_text = f"{issue.get('title', '')}\n\n{issue.get('body', '')}".lower()
-        if not any(tag in issue_text for tag in common.OPEN_SWE_TAGS):
-            common.logger.info("Ignoring issue that does not mention @openswe or @open-swe")
-            return {"status": "ignored", "reason": "Issue does not mention @openswe or @open-swe"}
+        if not any(tag in issue_text for tag in common.ALEPHAT_TAGS):
+            common.logger.info("Ignoring issue that does not mention @alephat or @alephat")
+            return {"status": "ignored", "reason": "Issue does not mention @alephat or @alephat"}
 
         gate_rejection = await common._enforce_public_repo_org_gate(payload, event_type)
         if gate_rejection is not None:
@@ -135,13 +135,13 @@ async def github_webhook(
         background_tasks.add_task(service.process_github_review_finding_reply, payload)
         return {"status": "accepted", "message": "Processing review finding reply"}
 
-    if not any(tag in comment_body.lower() for tag in common.OPEN_SWE_TAGS):
+    if not any(tag in comment_body.lower() for tag in common.ALEPHAT_TAGS):
         common.logger.debug(
-            "Ignoring GitHub %s%s that does not mention @openswe or @open-swe",
+            "Ignoring GitHub %s%s that does not mention @alephat or @alephat",
             event_type,
             f" action={action}" if action else "",
         )
-        return {"status": "ignored", "reason": "Comment does not mention @openswe or @open-swe"}
+        return {"status": "ignored", "reason": "Comment does not mention @alephat or @alephat"}
 
     gate_rejection = await common._enforce_public_repo_org_gate(payload, event_type)
     if gate_rejection is not None:

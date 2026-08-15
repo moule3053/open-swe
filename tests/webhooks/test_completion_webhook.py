@@ -53,7 +53,7 @@ async def test_error_status_posts_slack_failure_reply(monkeypatch: pytest.Monkey
     args = await_args.args
     assert args[0] == "C1"
     assert args[1] == "123.45"
-    assert "<https://ui/t1|Open SWE Web>" in args[2]
+    assert "<https://ui/t1|Alephat Web>" in args[2]
     assert client.threads.updates == [
         {"failure_reply_posted_run_id": "run-1", "failure_reply_posted_run_ids": ["run-1"]}
     ]
@@ -88,7 +88,7 @@ async def test_reviewer_error_settles_tracked_check(monkeypatch: pytest.MonkeyPa
         conclusion="neutral",
         title="Review did not complete",
         summary=(
-            "The Open SWE review run ended without publishing a review. "
+            "The Alephat review run ended without publishing a review. "
             "Re-trigger the review by pushing a commit or re-requesting it."
         ),
     )
@@ -104,7 +104,7 @@ async def test_reviewer_error_preserves_pending_check_result(
         "review_check_pending_result": {
             "conclusion": "success",
             "title": "Found 1 potential issue",
-            "summary": "Open SWE surfaced 1 potential issue.",
+            "summary": "Alephat surfaced 1 potential issue.",
         },
         "pr": {"owner": "acme", "name": "widgets"},
         "source": "schedule",
@@ -128,7 +128,7 @@ async def test_reviewer_error_preserves_pending_check_result(
         token="token",
         conclusion="success",
         title="Found 1 potential issue",
-        summary="Open SWE surfaced 1 potential issue.",
+        summary="Alephat surfaced 1 potential issue.",
     )
 
 

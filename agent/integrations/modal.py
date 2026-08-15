@@ -3,7 +3,7 @@ import os
 import modal
 from langchain_modal import ModalSandbox
 
-MODAL_APP_NAME = os.getenv("MODAL_APP_NAME", "open-swe")
+MODAL_APP_NAME = os.getenv("MODAL_APP_NAME", "alephat")
 
 
 def create_modal_sandbox(sandbox_id: str | None = None):

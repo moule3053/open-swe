@@ -34,7 +34,7 @@ def test_stateless_responses_replay_preserves_tool_history_without_mutation() ->
             ],
         ),
         ToolMessage(
-            content="/workspace/open-swe",
+            content="/workspace/alephat",
             tool_call_id="call_execute",
             name="execute",
         ),
@@ -62,7 +62,7 @@ def test_stateless_responses_replay_preserves_tool_history_without_mutation() ->
     }
     expected_output = {
         "type": "function_call_output",
-        "output": "/workspace/open-swe",
+        "output": "/workspace/alephat",
         "call_id": "call_execute",
     }
     assert expected_call in first_payload["input"]

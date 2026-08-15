@@ -44,7 +44,7 @@ def test_sandbox_name_for_thread_encodes_uuid() -> None:
     name = _sandbox_name_for_thread(thread_id)
     assert name is not None
     prefix, _, encoded = name.partition("-")
-    assert prefix == "openswe"
+    assert prefix == "alephat"
     assert encoded == encoded.lower()
     assert "=" not in encoded and "-" not in encoded
     # Round-trips back to the original UUID.
@@ -60,15 +60,15 @@ def test_sandbox_name_for_thread_none_or_invalid() -> None:
 @pytest.mark.asyncio
 async def test_release_sandbox_name_deletes_stale_box() -> None:
     client = AsyncMock()
-    await _release_sandbox_name(client, "openswe-abc")
-    client.delete_sandbox.assert_awaited_once_with("openswe-abc")
+    await _release_sandbox_name(client, "alephat-abc")
+    client.delete_sandbox.assert_awaited_once_with("alephat-abc")
 
 
 @pytest.mark.asyncio
 async def test_release_sandbox_name_swallows_missing_and_skips_none() -> None:
     client = AsyncMock()
     client.delete_sandbox.side_effect = RuntimeError("not found")
-    await _release_sandbox_name(client, "openswe-abc")  # must not raise
+    await _release_sandbox_name(client, "alephat-abc")  # must not raise
 
     client.delete_sandbox.reset_mock(side_effect=True)
     await _release_sandbox_name(client, None)
@@ -200,7 +200,7 @@ async def test_create_sandbox_with_retry_retries_transient_errors(monkeypatch) -
     result = await _create_sandbox_with_retry(
         cast(AsyncSandboxClient, client),
         snapshot_id="snap-1",
-        name="openswe-abc",
+        name="alephat-abc",
         fs_capacity_bytes=None,
         vcpus=None,
         mem_bytes=None,
@@ -211,7 +211,7 @@ async def test_create_sandbox_with_retry_retries_transient_errors(monkeypatch) -
 
     assert result == {"sandbox": "snap-1"}
     assert client.calls == 3
-    assert client.last_kwargs["name"] == "openswe-abc"
+    assert client.last_kwargs["name"] == "alephat-abc"
 
 
 @pytest.mark.asyncio

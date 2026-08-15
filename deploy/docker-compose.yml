@@ -1,4 +1,4 @@
-# Open SWE multi-service stack for local development.
+# Alephat multi-service stack for local development.
 #
 #   cp deploy/.env.example deploy/.env
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --build -d
@@ -6,10 +6,10 @@
 # UI: http://localhost:3005
 # API: http://localhost:8080
 
-name: ${COMPOSE_PROJECT_NAME:-openswe}
+name: ${COMPOSE_PROJECT_NAME:-alephat}
 
 x-runtime: &runtime
-  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://openswe:openswe@postgres:5432/openswe}
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://alephat:alephat@postgres:5432/alephat}
   NATS_URL: ${NATS_URL:-nats://nats:4222}
   DEFAULT_MODEL: ${DEFAULT_MODEL:-openai:gpt-4o-mini}
   DEFAULT_SANDBOX_PROVIDER: ${DEFAULT_SANDBOX_PROVIDER:-local}
@@ -24,15 +24,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-openswe}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openswe}
-      POSTGRES_DB: ${POSTGRES_DB:-openswe}
+      POSTGRES_USER: ${POSTGRES_USER:-alephat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alephat}
+      POSTGRES_DB: ${POSTGRES_DB:-alephat}
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
-      - openswe_pg:/var/lib/postgresql/data
+      - alephat_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openswe} -d ${POSTGRES_DB:-openswe}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-alephat} -d ${POSTGRES_DB:-alephat}"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -46,7 +46,7 @@ services:
       - "${NATS_HOST_PORT:-4222}:4222"
       - "${NATS_MONITOR_HOST_PORT:-8222}:8222"
     volumes:
-      - openswe_nats:/data
+      - alephat_nats:/data
 
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
@@ -68,12 +68,12 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.api
-    image: openswe-platform:local
+    image: alephat-platform:local
     restart: "no"
     environment:
       <<: *runtime
       BOOTSTRAP_DEV_DEFAULTS: "true"
-    command: ["python", "-m", "openswe_platform.migrate"]
+    command: ["python", "-m", "alephat_platform.migrate"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,7 +82,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.api
-    image: openswe-platform:local
+    image: alephat-platform:local
     restart: unless-stopped
     environment:
       <<: *runtime
@@ -97,7 +97,7 @@ services:
       MCP_ALLOW_PRIVATE_NETWORKS: ${MCP_ALLOW_PRIVATE_NETWORKS:-false}
       MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-120}
       MAX_MCP_SERVERS_PER_RUN: ${MAX_MCP_SERVERS_PER_RUN:-10}
-    command: ["uvicorn", "openswe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
+    command: ["uvicorn", "alephat_platform.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
     ports:
       - "${API_HOST_PORT:-8080}:8080"
     depends_on:
@@ -113,7 +113,7 @@ services:
       start_period: 20s
 
   webhook:
-    image: openswe-platform:local
+    image: alephat-platform:local
     restart: unless-stopped
     environment:
       <<: *runtime
@@ -122,7 +122,7 @@ services:
       SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
       WEBHOOK_SIGNATURES_REQUIRED: ${WEBHOOK_SIGNATURES_REQUIRED:-false}
       OUTBOX_POLL_INTERVAL_SECONDS: ${OUTBOX_POLL_INTERVAL_SECONDS:-1}
-    command: ["uvicorn", "openswe_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
+    command: ["uvicorn", "alephat_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
     ports:
       - "${WEBHOOK_HOST_PORT:-8081}:8081"
     depends_on:
@@ -138,7 +138,7 @@ services:
       start_period: 20s
 
   harness:
-    image: openswe-platform:local
+    image: alephat-platform:local
     restart: unless-stopped
     environment:
       <<: *runtime
@@ -171,9 +171,9 @@ services:
       MCP_STDIO_ALLOWED: ${MCP_STDIO_ALLOWED:-false}
       MCP_ALLOW_PRIVATE_NETWORKS: ${MCP_ALLOW_PRIVATE_NETWORKS:-false}
       MCP_TOOL_TIMEOUT_SECONDS: ${MCP_TOOL_TIMEOUT_SECONDS:-120}
-    command: ["python", "-m", "openswe_platform.harness.worker"]
+    command: ["python", "-m", "alephat_platform.harness.worker"]
     volumes:
-      - openswe_workspaces:/workspace
+      - alephat_workspaces:/workspace
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -186,7 +186,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.ui
-    image: openswe-ui:local
+    image: alephat-ui:local
     restart: unless-stopped
     environment:
       API_UPSTREAM: api:8080
@@ -198,6 +198,6 @@ services:
         condition: service_healthy
 
 volumes:
-  openswe_pg:
-  openswe_nats:
-  openswe_workspaces:
+  alephat_pg:
+  alephat_nats:
+  alephat_workspaces:

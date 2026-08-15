@@ -32,11 +32,11 @@ from ..review.findings import (
     list_findings as list_findings_async,
 )
 from ..review.publish import (
+    alephat_review_exists,
     clear_review_started_comment,
     fetch_pr_review_threads,
     fetch_review_comments,
     fetch_review_thread_id_for_comment,
-    open_swe_review_exists,
     parse_review_comment_marker,
     post_pull_request_review,
     render_inline_comment_payload,
@@ -314,16 +314,16 @@ async def _publish_review_async(
         eligible_with_payload.append((finding, payload))
 
     # With nothing new to surface, skip the "no issues found" summary if Open
-    # SWE has already reviewed this PR — the user already saw the previous
+    # Alephat has already reviewed this PR — the user already saw the previous
     # result, and posting another summary on every push is noise. We can't rely
     # on the static re_review flag alone: a push that lands mid-run is delivered
     # as a queued message into the still-running first-review run, whose
     # configurable still says re_review=False, so that path would post a
     # duplicate "No issues found". Key off the actual PR state (an existing Open
-    # SWE review summary) instead. Still resolve threads for findings that just
+    # Alephat review summary) instead. Still resolve threads for findings that just
     # moved to resolved, and advance last_reviewed_sha so subsequent pushes
     # don't redo the same diff.
-    if not inline_comments and await _open_swe_already_reviewed(
+    if not inline_comments and await _alephat_already_reviewed(
         thread_id=thread_id,
         owner=owner,
         repo=repo,
@@ -553,7 +553,7 @@ async def _publish_review_async(
     return result
 
 
-async def _open_swe_already_reviewed(
+async def _alephat_already_reviewed(
     *,
     thread_id: str,
     owner: str,
@@ -564,7 +564,7 @@ async def _open_swe_already_reviewed(
 ) -> bool:
     """Decide whether to suppress a duplicate empty "no issues found" summary.
 
-    Suppress only when we are *certain* a prior Open SWE review exists, so a
+    Suppress only when we are *certain* a prior Alephat review exists, so a
     transient GitHub failure never causes a double-post:
 
     - ``is_re_review`` is a durable signal (the dispatching webhook set it from
@@ -582,7 +582,7 @@ async def _open_swe_already_reviewed(
     metadata = await get_thread_metadata(thread_id)
     if get_thread_last_reviewed_sha(metadata):
         return True
-    exists = await open_swe_review_exists(owner=owner, repo=repo, pr_number=pr_number, token=token)
+    exists = await alephat_review_exists(owner=owner, repo=repo, pr_number=pr_number, token=token)
     return exists is True
 
 
@@ -716,8 +716,8 @@ def _comment_id_by_finding_id(
 ) -> dict[str, int]:
     """Map each surfaced finding id to its GitHub comment id via the marker.
 
-    The embedded Open SWE marker is the *only* source of truth. Every comment
-    this reviewer posts carries a ``<!-- open-swe-review-comment {...} -->``
+    The embedded Alephat marker is the *only* source of truth. Every comment
+    this reviewer posts carries a ``<!-- alephat-review-comment {...} -->``
     marker keyed by finding id (see ``render_inline_comment_body``), so the
     match is exact. The old ``(path, line, body)`` fallback collided whenever
     two findings shared a path/line/body — it cached the same comment id on
@@ -888,10 +888,10 @@ async def _maybe_post_slack_completion_reply(
         return
 
     if surfaced_count == 0:
-        headline = "*Open SWE Review*: No issues found."
+        headline = "*Alephat Review*: No issues found."
     else:
         issue_word = "issue" if surfaced_count == 1 else "issues"
-        headline = f"*Open SWE Review* found {surfaced_count} potential {issue_word}."
+        headline = f"*Alephat Review* found {surfaced_count} potential {issue_word}."
 
     review_url = f"https://github.com/{owner}/{repo}/pull/{pr_number}"
     if isinstance(review_id, int):

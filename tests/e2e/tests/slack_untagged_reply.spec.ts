@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 
-// Feature: in a Slack thread whose only participants are Open SWE and one human,
+// Feature: in a Slack thread whose only participants are Alephat and one human,
 // a follow-up no longer needs to @-mention the bot — UNLESS it tags a different
 // user. Driven through the real webhook + real agent; only the LLM is faked.
 
@@ -50,7 +50,7 @@ async function stateText(
 }
 
 // Open a two-party thread: Alice @-mentions the bot, the agent implements and
-// replies, so the thread now holds exactly Alice + Open SWE.
+// replies, so the thread now holds exactly Alice + Alephat.
 async function openTwoPartyThread(
   request: APIRequestContext,
 ): Promise<SendResult> {
@@ -72,7 +72,7 @@ async function openTwoPartyThread(
 }
 
 test.describe("Slack untagged two-party replies", () => {
-  test("an untagged follow-up triggers a run once Open SWE is in the thread", async ({
+  test("an untagged follow-up triggers a run once Alephat is in the thread", async ({
     request,
   }) => {
     const { thread_ts, thread_id } = await openTwoPartyThread(request);
@@ -109,7 +109,7 @@ test.describe("Slack untagged two-party replies", () => {
     request,
   }) => {
     await request.post("/control/reset");
-    // No prior Open SWE participation → the bot must be @-mentioned to engage.
+    // No prior Alephat participation → the bot must be @-mentioned to engage.
     const fresh = await send(request, {
       text: "just chatting with the team, nothing for the bot",
       mention_bot: false,

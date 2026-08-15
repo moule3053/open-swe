@@ -1,7 +1,7 @@
 import pytest
 
-from openswe_platform.harness import mcp_runtime
-from openswe_platform.harness.mcp_runtime import connect_mcp_servers, filter_tools
+from alephat_platform.harness import mcp_runtime
+from alephat_platform.harness.mcp_runtime import connect_mcp_servers, filter_tools
 
 
 def test_allowlist():

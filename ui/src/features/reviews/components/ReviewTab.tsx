@@ -5,7 +5,7 @@ import type { AgentThread } from "@/features/agents/lib/types"
 import { ReviewMainBody } from "@/features/reviews/components/ReviewMainBody"
 import { api } from "@/lib/api"
 
-// The git panel's "Review" sub-tab: the PR's Open SWE review rendered inline (no
+// The git panel's "Review" sub-tab: the PR's Alephat review rendered inline (no
 // side panel / chat), with an expand affordance that opens the full review page.
 export function ReviewTab({ thread }: { thread: AgentThread }) {
   const navigate = useNavigate()

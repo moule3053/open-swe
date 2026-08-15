@@ -25,8 +25,8 @@ class TestExtractRepoFromText:
         assert result == {"owner": "langchain-ai", "name": "langchainplus"}
 
     def test_repo_space_name_only_uses_default_owner(self) -> None:
-        result = extract_repo_from_text("fix bug in repo open-swe", default_owner="langchain-ai")
-        assert result == {"owner": "langchain-ai", "name": "open-swe"}
+        result = extract_repo_from_text("fix bug in repo alephat", default_owner="langchain-ai")
+        assert result == {"owner": "langchain-ai", "name": "alephat"}
 
     def test_repo_name_only_custom_default_owner(self) -> None:
         result = extract_repo_from_text("repo:my-repo", default_owner="custom-org")
@@ -76,11 +76,11 @@ class TestExtractChannelDescriptionText:
         assert extract_channel_description_text(channel) == ""
 
     def test_repo_token_extractable_from_description(self) -> None:
-        channel = {"topic": {"value": "Use repo:langchain-ai/open-swe here"}, "purpose": {}}
+        channel = {"topic": {"value": "Use repo:moule3053/alephat here"}, "purpose": {}}
         description = extract_channel_description_text(channel)
         assert extract_repo_from_text(description) == {
-            "owner": "langchain-ai",
-            "name": "open-swe",
+            "owner": "moule3053",
+            "name": "alephat",
         }
 
 
@@ -94,7 +94,7 @@ class TestLinearWebhookRepoOverride:
             "action": "create",
             "data": {
                 "id": "comment-123",
-                "body": "@openswe please fix this repo:custom-org/custom-repo",
+                "body": "@alephat please fix this repo:custom-org/custom-repo",
                 "issue": {
                     "id": "issue-456",
                     "title": "Test issue",
@@ -148,7 +148,7 @@ class TestLinearWebhookRepoOverride:
             "action": "create",
             "data": {
                 "id": "comment-123",
-                "body": "@openswe please fix this bug",
+                "body": "@alephat please fix this bug",
                 "issue": {
                     "id": "issue-456",
                     "title": "Test issue",
@@ -167,7 +167,7 @@ class TestLinearWebhookRepoOverride:
                     "title": "Test issue",
                     "identifier": "TEST-1",
                     "url": "https://linear.app/test/issue/TEST-1",
-                    "team": {"id": "t1", "name": "Open SWE", "key": "OS"},
+                    "team": {"id": "t1", "name": "Alephat", "key": "OS"},
                     "project": None,
                     "comments": {"nodes": []},
                 },
@@ -182,8 +182,8 @@ class TestLinearWebhookRepoOverride:
             result = await linear_webhook(mock_request, bg_tasks)
 
             assert result["status"] == "accepted"
-            assert "langchain-ai/open-swe" in result["message"]
+            assert "moule3053/alephat" in result["message"]
 
             call_args = bg_tasks.add_task.call_args
             repo_config = call_args[0][2]
-            assert repo_config == {"owner": "langchain-ai", "name": "open-swe"}
+            assert repo_config == {"owner": "moule3053", "name": "alephat"}

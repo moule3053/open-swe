@@ -24,7 +24,7 @@ from ..review.findings import Finding
 
 logger = logging.getLogger(__name__)
 
-OUTCOMES_DATASET_NAME = os.environ.get("REVIEWER_OUTCOMES_DATASET", "openswe-reviewer-outcomes")
+OUTCOMES_DATASET_NAME = os.environ.get("REVIEWER_OUTCOMES_DATASET", "alephat-reviewer-outcomes")
 
 TRUE_POSITIVE = "true_positive"
 FALSE_POSITIVE = "false_positive"
@@ -84,7 +84,7 @@ def _ensure_dataset(client: LangSmithClient) -> Any:
     ds = client.create_dataset(
         dataset_name=OUTCOMES_DATASET_NAME,
         description=(
-            "Open SWE reviewer finding outcomes (resolved / dismissed / 👍👎) "
+            "Alephat reviewer finding outcomes (resolved / dismissed / 👍👎) "
             "captured in production for per-repo continual learning."
         ),
     )

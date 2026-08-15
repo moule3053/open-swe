@@ -1,4 +1,4 @@
-const PANEL_STORAGE_COLLAPSED = "open-swe.gitpanel.collapsed"
+const PANEL_STORAGE_COLLAPSED = "alephat.gitpanel.collapsed"
 const COLLAPSED_STATE_TRUE = "1"
 const COLLAPSED_STATE_FALSE = "0"
 const PANEL_DEFAULT_EXPANDED_MEDIA_QUERY = "(min-width: 1536px)"

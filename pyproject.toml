@@ -1,7 +1,7 @@
 [project]
-name = "open-swe-agent"
+name = "alephat-agent"
 version = "0.1.0"
-description = "Open SWE Agent - Python agent for automating software engineering tasks"
+description = "Alephat Agent - Python agent for automating software engineering tasks"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -64,7 +64,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["agent", "openswe_platform"]
+packages = ["agent", "alephat_platform"]
 
 [tool.ruff]
 line-length = 100
@@ -94,6 +94,6 @@ venvPath = "."
 venv = ".venv"
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
-include = ["agent", "openswe_platform", "tests"]
+include = ["agent", "alephat_platform", "tests"]
 exclude = ["**/node_modules", "**/__pycache__", ".venv", "ui", "**/.*"]
 reportMissingTypeStubs = false

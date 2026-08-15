@@ -19,7 +19,7 @@ your turn with the best available result.
 
 
 def _configured_timeout_seconds() -> int:
-    raw = os.environ.get("OPEN_SWE_WRAPUP_TIMEOUT_SECONDS")
+    raw = os.environ.get("ALEPHAT_WRAPUP_TIMEOUT_SECONDS")
     if not raw:
         return _DEFAULT_TIMEOUT_SECONDS
     try:

@@ -7,7 +7,7 @@ Target architecture for a k8s-native, long-running remote coding agent platform.
 
 This document is the **contract** between services: identities, state machine, HTTP APIs, NATS subjects, lease/idempotency rules, model/sandbox/MCP contracts, and event schemas. Implementation may evolve; breaking contract changes require a version bump (`api` and message `schema_version`).
 
-**Implementation:** Python package `openswe_platform/` (see [`PLATFORM.md`](./PLATFORM.md)), schema `migrations/001_init.sql`, deploy under `deploy/`.
+**Implementation:** Python package `alephat_platform/` (see [`PLATFORM.md`](./PLATFORM.md)), schema `migrations/001_init.sql`, deploy under `deploy/`.
 
 ---
 

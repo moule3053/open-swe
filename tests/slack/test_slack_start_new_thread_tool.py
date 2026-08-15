@@ -13,7 +13,7 @@ slack_breakout_tool = importlib.import_module("agent.tools.slack_start_new_threa
 def _config() -> dict[str, Any]:
     return {
         "configurable": {
-            "repo": {"owner": "langchain-ai", "name": "open-swe"},
+            "repo": {"owner": "moule3053", "name": "alephat"},
             "github_login": "alice",
             "user_email": "alice@example.com",
             "agent_model_id": "anthropic:claude-sonnet-4-5",
@@ -141,13 +141,13 @@ async def test_slack_start_new_thread_success(monkeypatch: pytest.MonkeyPatch) -
     }
     assert captured["top_level_post"]["channel_id"] == "C1"
     assert "Investigate follow-up" in captured["top_level_post"]["text"]
-    assert "langchain-ai/open-swe" in captured["top_level_post"]["text"]
+    assert "moule3053/alephat" in captured["top_level_post"]["text"]
     assert captured["top_level_post"]["unfurl_links"] is False
     assert captured["thread_create"]["if_exists"] == "do_nothing"
     assert captured["thread_create"]["thread_id"] == expected_thread_id
     metadata = captured["thread_update"]["metadata"]
     assert metadata["source"] == "slack"
-    assert metadata["repo"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert metadata["repo"] == {"owner": "moule3053", "name": "alephat"}
     assert metadata["github_login"] == "alice"
     assert metadata["triggering_user_email"] == "alice@example.com"
     assert metadata["source_context"]["slack_thread"]["thread_ts"] == new_ts
@@ -161,11 +161,11 @@ async def test_slack_start_new_thread_success(monkeypatch: pytest.MonkeyPatch) -
     assert dispatch["thread_id"] == expected_thread_id
     assert dispatch["source"] == "slack"
     assert dispatch["configurable"]["slack_thread"]["thread_ts"] == new_ts
-    assert dispatch["configurable"]["repo"] == {"owner": "langchain-ai", "name": "open-swe"}
+    assert dispatch["configurable"]["repo"] == {"owner": "moule3053", "name": "alephat"}
     assert dispatch["configurable"]["github_login"] == "alice"
     assert dispatch["configurable"]["agent_model_id"] == "anthropic:claude-sonnet-4-5"
     assert "Breakout Instructions" in dispatch["content"]
-    assert "## Open SWE Links" in dispatch["content"]
+    assert "## Alephat Links" in dispatch["content"]
     assert f"- Web: https://dashboard.example/agents/{expected_thread_id}" in dispatch["content"]
     assert "- Trace: https://smith/x" in dispatch["content"]
     assert "do not duplicate it manually" in dispatch["content"]
@@ -215,7 +215,7 @@ async def test_slack_start_new_thread_rejects_invalid_repo_override(
     monkeypatch.setattr(slack_breakout_tool, "get_config", _config)
 
     result = await slack_breakout_tool.slack_start_new_thread(
-        "Title", "Instructions", default_repo="https://github.com/langchain-ai/open-swe"
+        "Title", "Instructions", default_repo="https://github.com/moule3053/alephat"
     )
 
     assert result == {

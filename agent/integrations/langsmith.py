@@ -107,7 +107,7 @@ def _current_thread_id() -> str | None:
 
 
 def _sandbox_name_for_thread(thread_id: str | None) -> str | None:
-    """Deterministic, thread-traceable sandbox name: ``openswe-<b32(thread uuid)>``.
+    """Deterministic, thread-traceable sandbox name: ``alephat-<b32(thread uuid)>``.
 
     The thread id (a UUID) is base32-encoded lowercase without padding so the
     name is a compact, hyphen-free token that maps back to the thread. Returns
@@ -120,7 +120,7 @@ def _sandbox_name_for_thread(thread_id: str | None) -> str | None:
     except ValueError:
         return None
     encoded = base64.b32encode(raw).decode("ascii").rstrip("=").lower()
-    return f"openswe-{encoded}"
+    return f"alephat-{encoded}"
 
 
 def _parse_optional_int(name: str, default: int) -> int:

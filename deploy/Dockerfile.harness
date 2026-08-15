@@ -1,5 +1,5 @@
-# Open SWE — harness worker (consumes NATS TASKS; one active job per process)
-# Build: docker build -f deploy/Dockerfile.harness -t openswe-harness .
+# Alephat — harness worker (consumes NATS TASKS; one active job per process)
+# Build: docker build -f deploy/Dockerfile.harness -t alephat-harness .
 # Scale independently: docker compose up --scale harness=3
 FROM python:3.12-slim-bookworm AS builder
 
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock README.md ./
 COPY agent ./agent
-COPY openswe_platform ./openswe_platform
+COPY alephat_platform ./alephat_platform
 COPY migrations ./migrations
 
 RUN pip install --no-cache-dir uv \
@@ -34,4 +34,4 @@ ENV PATH="/app/.venv/bin:$PATH" \
 USER appuser
 
 # No public HTTP port — worker only pulls from NATS JetStream.
-CMD ["python", "-m", "openswe_platform.harness.worker"]
+CMD ["python", "-m", "alephat_platform.harness.worker"]

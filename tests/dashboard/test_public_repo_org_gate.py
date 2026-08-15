@@ -78,14 +78,12 @@ def test_gate_blocks_non_member_on_public_pr_comment(monkeypatch) -> None:
                 "id": 1,
                 "number": 7,
                 "title": "PR title",
-                "pull_request": {
-                    "url": "https://api.github.com/repos/langchain-ai/open-swe/pulls/7"
-                },
+                "pull_request": {"url": "https://api.github.com/repos/moule3053/alephat/pulls/7"},
             },
-            "comment": {"body": "@open-swe review"},
+            "comment": {"body": "@alephat review"},
             "repository": {
                 "owner": {"login": "langchain-ai"},
-                "name": "open-swe",
+                "name": "alephat",
                 "private": False,
             },
             "sender": {"login": "stranger", "type": "User"},
@@ -122,14 +120,12 @@ def test_gate_allows_org_member_on_public_pr_comment(monkeypatch) -> None:
                 "id": 1,
                 "number": 7,
                 "title": "PR title",
-                "pull_request": {
-                    "url": "https://api.github.com/repos/langchain-ai/open-swe/pulls/7"
-                },
+                "pull_request": {"url": "https://api.github.com/repos/moule3053/alephat/pulls/7"},
             },
-            "comment": {"body": "@open-swe review"},
+            "comment": {"body": "@alephat review"},
             "repository": {
                 "owner": {"login": "langchain-ai"},
-                "name": "open-swe",
+                "name": "alephat",
                 "private": False,
             },
             "sender": {"login": "insider", "type": "User"},
@@ -164,14 +160,12 @@ def test_gate_skipped_on_private_repo(monkeypatch) -> None:
                 "id": 1,
                 "number": 7,
                 "title": "PR title",
-                "pull_request": {
-                    "url": "https://api.github.com/repos/langchain-ai/open-swe/pulls/7"
-                },
+                "pull_request": {"url": "https://api.github.com/repos/moule3053/alephat/pulls/7"},
             },
-            "comment": {"body": "@open-swe please look at this"},
+            "comment": {"body": "@alephat please look at this"},
             "repository": {
                 "owner": {"login": "langchain-ai"},
-                "name": "open-swe",
+                "name": "alephat",
                 "private": True,
             },
             "sender": {"login": "stranger", "type": "User"},
@@ -207,14 +201,12 @@ def test_gate_disabled_when_env_unset(monkeypatch) -> None:
                 "id": 1,
                 "number": 7,
                 "title": "PR title",
-                "pull_request": {
-                    "url": "https://api.github.com/repos/langchain-ai/open-swe/pulls/7"
-                },
+                "pull_request": {"url": "https://api.github.com/repos/moule3053/alephat/pulls/7"},
             },
-            "comment": {"body": "@open-swe please look at this"},
+            "comment": {"body": "@alephat please look at this"},
             "repository": {
                 "owner": {"login": "langchain-ai"},
-                "name": "open-swe",
+                "name": "alephat",
                 "private": False,
             },
             "sender": {"login": "stranger", "type": "User"},
@@ -245,12 +237,12 @@ def test_gate_blocks_non_member_on_public_issue(monkeypatch) -> None:
             "issue": {
                 "id": 1,
                 "number": 7,
-                "title": "@openswe please help",
+                "title": "@alephat please help",
                 "body": "x",
             },
             "repository": {
                 "owner": {"login": "langchain-ai"},
-                "name": "open-swe",
+                "name": "alephat",
                 "private": False,
             },
             "sender": {"login": "stranger", "type": "User"},
@@ -273,16 +265,16 @@ def test_review_requested_is_unsupported_before_public_repo_gate(monkeypatch) ->
         "pull_request",
         {
             "action": "review_requested",
-            "requested_reviewer": {"login": "open-swe[bot]"},
+            "requested_reviewer": {"login": "alephat[bot]"},
             "pull_request": {
                 "number": 1244,
-                "html_url": "https://github.com/langchain-ai/open-swe/pull/1244",
+                "html_url": "https://github.com/moule3053/alephat/pull/1244",
                 "base": {"sha": "base-sha"},
                 "head": {"sha": "head-sha", "ref": "feature-branch"},
             },
             "repository": {
                 "owner": {"login": "langchain-ai"},
-                "name": "open-swe",
+                "name": "alephat",
                 "private": False,
             },
             "sender": {"login": "stranger", "type": "User"},
@@ -320,17 +312,15 @@ def test_gate_allows_internal_bot_sender(monkeypatch) -> None:
                 "id": 1,
                 "number": 7,
                 "title": "PR title",
-                "pull_request": {
-                    "url": "https://api.github.com/repos/langchain-ai/open-swe/pulls/7"
-                },
+                "pull_request": {"url": "https://api.github.com/repos/moule3053/alephat/pulls/7"},
             },
-            "comment": {"body": "@open-swe please look at this"},
+            "comment": {"body": "@alephat please look at this"},
             "repository": {
                 "owner": {"login": "langchain-ai"},
-                "name": "open-swe",
+                "name": "alephat",
                 "private": False,
             },
-            "sender": {"login": "open-swe[bot]", "type": "Bot"},
+            "sender": {"login": "alephat[bot]", "type": "Bot"},
         },
     )
 

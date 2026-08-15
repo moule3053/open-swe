@@ -484,8 +484,8 @@ async def process_github_push_event(payload: dict[str, Any]) -> None:
     if metadata is None or metadata.get("kind") != common.REVIEWER_THREAD_KIND:
         common.logger.info(
             "Push to %s/%s#%s ignored: no reviewer thread for this PR. "
-            "Trigger a first review (Slack `@open-swe review <url>` or request "
-            "open-swe[bot] as a GitHub reviewer) to start watching.",
+            "Trigger a first review (Slack `@alephat review <url>` or request "
+            "alephat[bot] as a GitHub reviewer) to start watching.",
             repo_config["owner"],
             repo_config["name"],
             pr_number,
@@ -625,10 +625,10 @@ async def process_github_push_event(payload: dict[str, Any]) -> None:
 
 
 async def process_github_pr_comment(payload: dict[str, Any], event_type: str) -> None:
-    """Process a GitHub PR comment that tagged @open-swe.
+    """Process a GitHub PR comment that tagged @alephat.
 
     Retrieves the existing thread token, reacts with 👀, fetches all comments
-    since the last @open-swe tag, then creates or queues a new run.
+    since the last @alephat tag, then creates or queues a new run.
 
     Args:
         payload: The parsed GitHub webhook payload.
@@ -666,7 +666,7 @@ async def process_github_pr_comment(payload: dict[str, Any], event_type: str) ->
         stable_key = f"{owner}/{name}/pr/{pr_number}"
         thread_id = str(uuid.uuid5(uuid.NAMESPACE_URL, stable_key))
         common.logger.info(
-            "Generated thread_id %s for non-open-swe branch '%s'", thread_id, branch_name
+            "Generated thread_id %s for non-alephat branch '%s'", thread_id, branch_name
         )
         langgraph_client = common.get_client(url=common.LANGGRAPH_URL)
         try:
@@ -735,7 +735,7 @@ async def process_github_pr_comment(payload: dict[str, Any], event_type: str) ->
             repo_config, pr_number, token=github_token
         )
     if not comments:
-        common.logger.info("No comments found since last @open-swe tag for PR %s", pr_number)
+        common.logger.info("No comments found since last @alephat tag for PR %s", pr_number)
         return
 
     prompt = common.build_pr_prompt(comments, pr_url, repo_config=repo_config)
@@ -750,14 +750,14 @@ async def process_github_pr_comment(payload: dict[str, Any], event_type: str) ->
 
 
 async def process_github_review_finding_reply(payload: dict[str, Any]) -> None:
-    """Route replies to Open SWE review comments back to the reviewer graph."""
+    """Route replies to Alephat review comments back to the reviewer graph."""
     parent_comment_id = common._review_comment_reply_parent_id(payload)
     if parent_comment_id is None:
         return
 
     sender = payload.get("sender", {})
     sender_login = sender.get("login") if isinstance(sender, dict) else None
-    if sender_login == "open-swe[bot]":
+    if sender_login == "alephat[bot]":
         return
 
     repo = payload.get("repository", {})
@@ -868,7 +868,7 @@ async def process_github_review_finding_reply(payload: dict[str, Any]) -> None:
 
 
 async def process_github_issue(payload: dict[str, Any], event_type: str) -> None:
-    """Process a GitHub issue or issue comment that tagged @open-swe."""
+    """Process a GitHub issue or issue comment that tagged @alephat."""
     issue = payload.get("issue", {})
     repo = payload.get("repository", {})
     repo_config = {

@@ -151,7 +151,7 @@ def create_pull(
         "draft": draft,
         "state": "open",
         "merged": False,
-        "author": "open-swe[bot]",
+        "author": "alephat[bot]",
         "files": files,
         "additions": sum(f["additions"] for f in files),
         "deletions": sum(f["deletions"] for f in files),

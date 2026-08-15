@@ -90,7 +90,7 @@ class FakeData:
 
 class FakeSession:
     id = "session-123"
-    _open_swe_cdp_guard: stagehand_browser._CDPBrowserURLGuard
+    _alephat_cdp_guard: stagehand_browser._CDPBrowserURLGuard
 
     def __init__(self) -> None:
         self.data = FakeData()
@@ -238,7 +238,7 @@ async def test_cdp_browser_url_guard_blocks_real_stagehand_requests(
         }
     )
     for _ in range(100):
-        if "cdp-session-1" in session._open_swe_cdp_guard._attached_sessions:
+        if "cdp-session-1" in session._alephat_cdp_guard._attached_sessions:
             break
         await asyncio.sleep(0.01)
     await websocket.emit(
@@ -257,7 +257,7 @@ async def test_cdp_browser_url_guard_blocks_real_stagehand_requests(
     assert any(message["method"] == "Fetch.enable" for message in websocket.sent)
     assert any(message["method"] == "Fetch.failRequest" for message in websocket.sent)
 
-    await session._open_swe_cdp_guard.close()
+    await session._alephat_cdp_guard.close()
 
 
 @pytest.mark.asyncio
@@ -298,9 +298,9 @@ async def test_cdp_browser_url_guard_waits_for_initial_fetch_enable(
     await websocket.respond_to_method("Fetch.enable")
     await install_task
 
-    assert "cdp-session-1" in session._open_swe_cdp_guard._attached_sessions
+    assert "cdp-session-1" in session._alephat_cdp_guard._attached_sessions
 
-    await session._open_swe_cdp_guard.close()
+    await session._alephat_cdp_guard.close()
 
 
 @pytest.mark.asyncio
@@ -330,7 +330,7 @@ async def test_cdp_browser_url_guard_ignores_stale_initial_target(
 
     await stagehand_browser._install_browser_url_guard(session)
 
-    guard = session._open_swe_cdp_guard
+    guard = session._alephat_cdp_guard
     assert guard._protected_target_ids == {"live-target"}
     assert "cdp-session-live" in guard._attached_sessions
     assert any(

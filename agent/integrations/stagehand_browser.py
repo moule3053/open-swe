@@ -179,21 +179,21 @@ async def _abort_route(route: Any) -> None:
 
 def _mark_blocked_request(session: Any, url: str, reason: str) -> None:
     try:
-        session._open_swe_blocked_request = (url, reason)
+        session._alephat_blocked_request = (url, reason)
     except Exception:  # noqa: BLE001
         pass
 
 
 def _clear_blocked_request(session: Any) -> None:
     try:
-        if hasattr(session, "_open_swe_blocked_request"):
-            delattr(session, "_open_swe_blocked_request")
+        if hasattr(session, "_alephat_blocked_request"):
+            delattr(session, "_alephat_blocked_request")
     except Exception:  # noqa: BLE001
         pass
 
 
 def _blocked_request_error(session: Any) -> str | None:
-    blocked = _safe_attr(session, "_open_swe_blocked_request")
+    blocked = _safe_attr(session, "_alephat_blocked_request")
     if isinstance(blocked, tuple) and len(blocked) == 2:
         url, reason = blocked
         return f"blocked browser request to {url}: {reason}"
@@ -204,7 +204,7 @@ def _set_current_page_url(session: Any, url: str) -> None:
     if not url or url == "about:blank":
         return
     try:
-        session._open_swe_current_page_url = url
+        session._alephat_current_page_url = url
     except Exception:  # noqa: BLE001
         pass
 
@@ -575,12 +575,12 @@ def _guard_targets(session: Any) -> list[Any]:
 async def _install_browser_url_guard(session: Any) -> None:
     installed = False
     cdp_url = _cdp_url(session)
-    if cdp_url is not None and not _safe_attr(session, "_open_swe_cdp_guard"):
+    if cdp_url is not None and not _safe_attr(session, "_alephat_cdp_guard"):
         cdp_guard: _CDPBrowserURLGuard | None = None
         try:
             cdp_guard = _CDPBrowserURLGuard(session, cdp_url)
             await cdp_guard.start()
-            session._open_swe_cdp_guard = cdp_guard
+            session._alephat_cdp_guard = cdp_guard
             installed = True
         except Exception:  # noqa: BLE001
             if cdp_guard is not None:
@@ -601,7 +601,7 @@ async def _install_browser_url_guard(session: Any) -> None:
         await _abort_route(route)
 
     for target in _guard_targets(session):
-        if _safe_attr(target, "_open_swe_url_guard_installed"):
+        if _safe_attr(target, "_alephat_url_guard_installed"):
             installed = True
             continue
         route = _callable_attr(target, "route")
@@ -609,7 +609,7 @@ async def _install_browser_url_guard(session: Any) -> None:
             continue
         try:
             await _maybe_await(route("**/*", guarded_route))
-            target._open_swe_url_guard_installed = True
+            target._alephat_url_guard_installed = True
             installed = True
         except Exception:  # noqa: BLE001
             logger.debug("Failed to install browser URL guard on %r", target, exc_info=True)
@@ -620,7 +620,7 @@ async def _install_browser_url_guard(session: Any) -> None:
 
 
 def _current_page_url(session: Any) -> str | None:
-    cdp_url = _safe_attr(session, "_open_swe_current_page_url")
+    cdp_url = _safe_attr(session, "_alephat_current_page_url")
     if isinstance(cdp_url, str) and cdp_url and cdp_url != "about:blank":
         return cdp_url
     for target in _guard_targets(session):
@@ -631,7 +631,7 @@ def _current_page_url(session: Any) -> str | None:
 
 
 async def _raise_if_browser_blocked(session: Any, operation: str) -> None:
-    cdp_guard = _safe_attr(session, "_open_swe_cdp_guard")
+    cdp_guard = _safe_attr(session, "_alephat_cdp_guard")
     guard_failure = cdp_guard.failure() if isinstance(cdp_guard, _CDPBrowserURLGuard) else None
     if guard_failure is not None:
         await browser_close()
@@ -813,7 +813,7 @@ async def browser_close() -> dict[str, Any]:
     if entry is None:
         return {"success": True, "closed": False}
     client, session = entry
-    cdp_guard = _safe_attr(session, "_open_swe_cdp_guard")
+    cdp_guard = _safe_attr(session, "_alephat_cdp_guard")
     close_cdp_guard = _callable_attr(cdp_guard, "close") if cdp_guard is not None else None
     if close_cdp_guard is not None:
         await _maybe_await(close_cdp_guard())

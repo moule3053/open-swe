@@ -3,65 +3,65 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openswe-harness
-  namespace: openswe
+  name: alephat-harness
+  namespace: alephat
   labels:
-    app: openswe-harness
+    app: alephat-harness
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: openswe-harness
+      app: alephat-harness
   template:
     metadata:
       labels:
-        app: openswe-harness
+        app: alephat-harness
     spec:
-      serviceAccountName: openswe-harness
+      serviceAccountName: alephat-harness
       initContainers:
         - name: migrate
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
-          command: ["python", "-m", "openswe_platform.migrate"]
+          command: ["python", "-m", "alephat_platform.migrate"]
           env:
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_URL
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_HOST
             - name: DATABASE_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_NAME
             - name: DATABASE_USER
               valueFrom:
                 configMapKeyRef:
-                  name: openswe-config
+                  name: alephat-config
                   key: DATABASE_USER
       containers:
         - name: harness
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-platform:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-platform:latest
           imagePullPolicy: Always
-          command: ["python", "-m", "openswe_platform.harness.worker"]
+          command: ["python", "-m", "alephat_platform.harness.worker"]
           envFrom:
             - configMapRef:
-                name: openswe-config
+                name: alephat-config
           env:
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: SERVICE_NAME
               value: harness
@@ -72,31 +72,31 @@ spec:
             - name: DAYTONA_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: DAYTONA_API_KEY
                   optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: OPENAI_API_KEY
                   optional: true
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: ANTHROPIC_API_KEY
                   optional: true
             - name: FIREWORKS_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: FIREWORKS_API_KEY
                   optional: true
             - name: GOOGLE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: GOOGLE_API_KEY
                   optional: true
             - name: LITELLM_API_KEY
@@ -108,33 +108,33 @@ spec:
             - name: TOKEN_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: TOKEN_ENCRYPTION_KEY
             - name: GITHUB_APP_ID
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_ID
             - name: GITHUB_APP_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_PRIVATE_KEY
             - name: GITHUB_APP_INSTALLATION_ID
               valueFrom:
                 secretKeyRef:
-                  name: openswe-oauth
+                  name: alephat-oauth
                   key: GITHUB_APP_INSTALLATION_ID
             - name: OPENSANDBOX_BASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: OPENSANDBOX_BASE_URL
                   optional: true
             - name: OPENSANDBOX_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openswe-secrets
+                  name: alephat-secrets
                   key: OPENSANDBOX_API_KEY
                   optional: true
           resources:

@@ -1,5 +1,5 @@
-# Open SWE — webhook ingress (GitHub / Slack)
-# Build: docker build -f deploy/Dockerfile.webhook -t openswe-webhook .
+# Alephat — webhook ingress (GitHub / Slack)
+# Build: docker build -f deploy/Dockerfile.webhook -t alephat-webhook .
 FROM python:3.12-slim-bookworm AS builder
 
 WORKDIR /app
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock README.md ./
 COPY agent ./agent
-COPY openswe_platform ./openswe_platform
+COPY alephat_platform ./alephat_platform
 COPY migrations ./migrations
 
 RUN pip install --no-cache-dir uv \
@@ -36,4 +36,4 @@ EXPOSE 8081
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8081/healthz || exit 1
 
-CMD ["uvicorn", "openswe_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]
+CMD ["uvicorn", "alephat_platform.webhook.app:app", "--host", "0.0.0.0", "--port", "8081"]

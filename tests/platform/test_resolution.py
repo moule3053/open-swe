@@ -2,9 +2,9 @@ import uuid
 
 import pytest
 
-from openswe_platform.common.enums import AgentType, McpMode, SandboxProvider
-from openswe_platform.common.errors import PlatformError
-from openswe_platform.common.resolution import (
+from alephat_platform.common.enums import AgentType, McpMode, SandboxProvider
+from alephat_platform.common.errors import PlatformError
+from alephat_platform.common.resolution import (
     resolve_mcp_ids,
     resolve_model,
     resolve_sandbox_provider,

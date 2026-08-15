@@ -76,7 +76,7 @@ def _failure_text(status: str, dashboard_url: str | None = None) -> str:
         "Send another message and I'll pick it back up."
     )
     if dashboard_url:
-        text += f" You can view the error in <{dashboard_url}|Open SWE Web>."
+        text += f" You can view the error in <{dashboard_url}|Alephat Web>."
     return text
 
 
@@ -111,7 +111,7 @@ async def _settle_failed_reviewer_check(thread_id: str, metadata: dict[str, Any]
             conclusion = "neutral"
             title = "Review did not complete"
             summary = (
-                "The Open SWE review run ended without publishing a review. "
+                "The Alephat review run ended without publishing a review. "
                 "Re-trigger the review by pushing a commit or re-requesting it."
             )
         await settle_review_check_run(

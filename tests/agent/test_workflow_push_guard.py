@@ -46,7 +46,7 @@ class _Backend:
         if "diff --numstat" in command:
             return _Response("1\t1\t.github/workflows/ci.yml\n")
         if "config --get remote.origin.url" in command:
-            return _Response("git@github.com:langchain-ai/open-swe.git\n")
+            return _Response("git@github.com:moule3053/alephat.git\n")
         if "rev-parse --abbrev-ref HEAD" in command:
             return _Response("feature\n")
         if "rev-parse HEAD" in command or "rev-parse feature" in command:
@@ -113,7 +113,7 @@ def test_workflow_change_for_push_fingerprints_workflow_diff() -> None:
     )
 
     assert change is not None
-    assert change.repo == "https://github.com/langchain-ai/open-swe"
+    assert change.repo == "https://github.com/moule3053/alephat"
     assert change.branch == "feature"
     assert change.files == [".github/workflows/ci.yml"]
     assert change.diff_stats == {"files": 1, "additions": 1, "deletions": 1}
@@ -133,7 +133,7 @@ def test_workflow_approval_response_serializes_review_fields() -> None:
         {
             "fingerprint": "abc",
             "status": "pending",
-            "repo": "https://github.com/langchain-ai/open-swe",
+            "repo": "https://github.com/moule3053/alephat",
             "branch": "feature",
             "base_sha": "b" * 40,
             "head_sha": "a" * 40,
@@ -141,7 +141,7 @@ def test_workflow_approval_response_serializes_review_fields() -> None:
             "diff_stats": {"files": 1, "additions": 2, "deletions": 3},
             "diff_preview": "diff --git ...",
             "diff_preview_truncated": True,
-            "approval_url": "https://openswe.vercel.app/agents/thread?workflowApproval=abc",
+            "approval_url": "http://127.0.0.1:18080/agents/thread?workflowApproval=abc",
             "requested_at": "2026-06-30T00:00:00+00:00",
         }
     )

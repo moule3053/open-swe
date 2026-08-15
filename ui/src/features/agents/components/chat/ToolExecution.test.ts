@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import { formatToolDisplay } from "./toolExecutionDisplay";
 
 describe("formatToolDisplay", () => {
-  const projectPath = "/workspace/open-swe";
+  const projectPath = "/workspace/alephat";
 
   it("renders read_file with the file_path alias consistently", () => {
     expect(
       formatToolDisplay(
-        "read_file /workspace/open-swe/AGENTS.md",
+        "read_file /workspace/alephat/AGENTS.md",
         "read",
-        { file_path: "/workspace/open-swe/AGENTS.md" },
+        { file_path: "/workspace/alephat/AGENTS.md" },
         projectPath,
       ),
     ).toBe("Read AGENTS.md");
@@ -19,9 +19,9 @@ describe("formatToolDisplay", () => {
   it("renders ls as a list operation with a relative path", () => {
     expect(
       formatToolDisplay(
-        "ls /workspace/open-swe/ui",
+        "ls /workspace/alephat/ui",
         "read",
-        { path: "/workspace/open-swe/ui" },
+        { path: "/workspace/alephat/ui" },
         projectPath,
       ),
     ).toBe("List ui");

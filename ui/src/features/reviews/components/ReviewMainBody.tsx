@@ -103,8 +103,8 @@ type ReviewAnnotation =
   | { kind: "draftComment"; path: string; range: SelectedLineRange }
   | { kind: "comment"; comment: PrReviewComment }
 
-const REVIEW_VIEW_STORAGE_KEY = "open-swe.review.view"
-const REVIEW_DIFF_STYLE_STORAGE_KEY = "open-swe.review.diffStyle"
+const REVIEW_VIEW_STORAGE_KEY = "alephat.review.view"
+const REVIEW_DIFF_STYLE_STORAGE_KEY = "alephat.review.diffStyle"
 const FINDING_SCROLL_MAX_FRAMES = 120
 
 function readStoredDiffStyle(): DiffStyle {
@@ -664,7 +664,7 @@ function ReviewBodyInner({
   const expandedFindingRef = useRef(expandedFinding)
   expandedFindingRef.current = expandedFinding
 
-  const viewedStorageKey = `open-swe.review.viewed.${detail.owner}/${detail.repo}/${detail.number}.${detail.head_sha}`
+  const viewedStorageKey = `alephat.review.viewed.${detail.owner}/${detail.repo}/${detail.number}.${detail.head_sha}`
   const [viewed, setViewed] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
     try {
@@ -699,7 +699,7 @@ function ReviewBodyInner({
     [viewedStorageKey]
   )
 
-  const readStorageKey = `open-swe.review.read.${detail.thread_id}`
+  const readStorageKey = `alephat.review.read.${detail.thread_id}`
   const [read, setRead] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set()
     try {
@@ -2314,7 +2314,7 @@ function Badgeish({ children }: { children: React.ReactNode }) {
   )
 }
 
-const REVIEW_PANEL_STORAGE_WIDTH = "open-swe.review-panel.width"
+const REVIEW_PANEL_STORAGE_WIDTH = "alephat.review-panel.width"
 const REVIEW_PANEL_DEFAULT_WIDTH = 420
 const REVIEW_PANEL_MIN_WIDTH = 360
 // Keep at least this much room for the PR content column so the panel can grow

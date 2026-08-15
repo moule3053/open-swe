@@ -1,9 +1,9 @@
 ---
 type: Workflow Guide
 title: Coding, review, planning, and learning workflows
-description: Source-to-result workflows for Open SWE coding tasks, PR review, plan approvals, repository review-style learning, and follow-up execution.
+description: Source-to-result workflows for Alephat coding tasks, PR review, plan approvals, repository review-style learning, and follow-up execution.
 resource: /agent/webhooks
-tags: [open-swe, workflows, slack, linear, github, review]
+tags: [alephat, workflows, slack, linear, github, review]
 ---
 # Coding, review, planning, and learning workflows
 

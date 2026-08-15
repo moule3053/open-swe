@@ -37,7 +37,7 @@ export function ReviewCommentsMenu({
   })
 
   const otherComments = useMemo(
-    () => (comments.data?.comments ?? []).filter((c) => !c.is_open_swe),
+    () => (comments.data?.comments ?? []).filter((c) => !c.is_alephat),
     [comments.data]
   )
   const filtered = useMemo(() => {

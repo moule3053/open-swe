@@ -1,23 +1,23 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: openswe
+  name: alephat
   namespace: alephat
 spec:
   entryPoints:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`openswe.example.com`) && PathPrefix(`/hooks/`)
+      match: Host(`alephat.example.com`) && PathPrefix(`/hooks/`)
       priority: 100
       services:
-        - name: openswe-webhook
+        - name: alephat-webhook
           port: 80
     - kind: Rule
-      match: Host(`openswe.example.com`)
+      match: Host(`alephat.example.com`)
       priority: 10
       services:
-        - name: openswe-ui
+        - name: alephat-ui
           port: 80
   tls:
     certResolver: letsencrypt

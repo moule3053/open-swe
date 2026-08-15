@@ -8,8 +8,8 @@ from evals.reviewer import store_reporter
 from evals.reviewer.store_reporter import StoreReporter, github_run_url, is_enabled
 
 _CONFIG = {
-    "experiment_prefix": "openswe-review-confidence",
-    "langsmith_project": "open-swe-evals",
+    "experiment_prefix": "alephat-review-confidence",
+    "langsmith_project": "alephat-evals",
     "model_id": "google_genai:gemini-3.5-flash",
 }
 
@@ -19,7 +19,7 @@ def _make_reporter(
 ) -> tuple[StoreReporter, MagicMock]:
     monkeypatch.setenv("LANGGRAPH_URL", "https://lg.test")
     monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
-    monkeypatch.setenv("GITHUB_REPOSITORY", "langchain-ai/open-swe")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "moule3053/alephat")
     monkeypatch.setenv("GITHUB_RUN_ID", "12345")
     monkeypatch.setenv("GITHUB_ACTOR", "octocat")
     client = MagicMock()
@@ -49,9 +49,9 @@ def test_is_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_github_run_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
-    monkeypatch.setenv("GITHUB_REPOSITORY", "langchain-ai/open-swe")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "moule3053/alephat")
     monkeypatch.setenv("GITHUB_RUN_ID", "999")
-    assert github_run_url() == "https://github.com/langchain-ai/open-swe/actions/runs/999"
+    assert github_run_url() == "https://github.com/moule3053/alephat/actions/runs/999"
     monkeypatch.delenv("GITHUB_RUN_ID")
     assert github_run_url() is None
 
@@ -68,10 +68,10 @@ async def test_start_writes_running_record(monkeypatch: pytest.MonkeyPatch) -> N
     assert record["status"] == "running"
     assert record["trigger"] == "github_action"
     assert record["progress"] == {"completed": 2, "total": 10}
-    assert record["github_run_url"] == "https://github.com/langchain-ai/open-swe/actions/runs/12345"
+    assert record["github_run_url"] == "https://github.com/moule3053/alephat/actions/runs/12345"
     assert record["created_by"] == "octocat"  # falls back to GITHUB_ACTOR
     assert record["worker_id"] == "12345"
-    assert record["run_name"] == "openswe-review-confidence"
+    assert record["run_name"] == "alephat-review-confidence"
     assert record["limit"] == 3
     assert record["heartbeat"]
 

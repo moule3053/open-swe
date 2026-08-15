@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: openswe-postgresql-data
+  name: alephat-postgresql-data
 spec:
   accessModes:
     - ReadWriteOnce
@@ -13,17 +13,17 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: openswe-postgresql
+  name: alephat-postgresql
 spec:
-  serviceName: openswe-postgresql
+  serviceName: alephat-postgresql
   replicas: 1
   selector:
     matchLabels:
-      app: openswe-postgresql
+      app: alephat-postgresql
   template:
     metadata:
       labels:
-        app: openswe-postgresql
+        app: alephat-postgresql
     spec:
       securityContext:
         fsGroup: 999
@@ -36,13 +36,13 @@ spec:
               containerPort: 5432
           env:
             - name: POSTGRES_DB
-              value: openswe
+              value: alephat
             - name: POSTGRES_USER
-              value: openswe
+              value: alephat
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openswe-postgres
+                  name: alephat-postgres
                   key: password
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
@@ -51,7 +51,7 @@ spec:
               mountPath: /var/lib/postgresql/data
           readinessProbe:
             exec:
-              command: ["sh", "-c", "pg_isready -U openswe -d openswe"]
+              command: ["sh", "-c", "pg_isready -U alephat -d alephat"]
             initialDelaySeconds: 5
             periodSeconds: 5
           resources:
@@ -64,15 +64,15 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: openswe-postgresql-data
+            claimName: alephat-postgresql-data
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: openswe-postgresql
+  name: alephat-postgresql
 spec:
   selector:
-    app: openswe-postgresql
+    app: alephat-postgresql
   ports:
     - name: postgres
       port: 5432

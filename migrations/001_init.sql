@@ -1,4 +1,4 @@
--- Open SWE multi-service schema (docs/SERVICE_CONTRACTS.md)
+-- Alephat multi-service schema (docs/SERVICE_CONTRACTS.md)
 -- Apply with: psql $DATABASE_URL -f migrations/001_init.sql
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";

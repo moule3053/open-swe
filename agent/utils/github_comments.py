@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "GitHubAuthError",
-    "OPEN_SWE_TAGS",
+    "ALEPHAT_TAGS",
     "build_pr_prompt",
     "extract_pr_context",
     "fetch_issue_comments",
@@ -32,7 +32,7 @@ __all__ = [
     "verify_github_signature",
 ]
 
-OPEN_SWE_TAGS = ("@openswe", "@open-swe", "@openswe-dev")
+ALEPHAT_TAGS = ("@alephat", "@alephat", "@alephat-dev")
 UNTRUSTED_GITHUB_COMMENT_OPEN_TAG = "<dangerous-external-untrusted-users-comment>"
 UNTRUSTED_GITHUB_COMMENT_CLOSE_TAG = "</dangerous-external-untrusted-users-comment>"
 _SANITIZED_UNTRUSTED_GITHUB_COMMENT_OPEN_TAG = "[blocked-untrusted-comment-tag-open]"
@@ -259,10 +259,10 @@ async def fetch_issue_comments(
 async def fetch_pr_comments_since_last_tag(
     repo_config: dict[str, str], pr_number: int, *, token: str
 ) -> list[dict[str, Any]]:
-    """Fetch all PR comments/reviews since the last @open-swe tag.
+    """Fetch all PR comments/reviews since the last @alephat tag.
 
     Fetches from all 3 GitHub comment sources, merges and sorts chronologically,
-    then returns every comment from the last @open-swe mention onwards.
+    then returns every comment from the last @alephat mention onwards.
 
     For inline review comments the dict also includes:
     - 'path': file path commented on
@@ -275,7 +275,7 @@ async def fetch_pr_comments_since_last_tag(
         token: GitHub access token.
 
     Returns:
-        List of comment dicts ordered chronologically from last @open-swe tag.
+        List of comment dicts ordered chronologically from last @alephat tag.
     """
     owner = repo_config.get("owner", "")
     repo = repo_config.get("name", "")
@@ -345,17 +345,17 @@ async def fetch_pr_comments_since_last_tag(
     # Sort all comments chronologically
     all_comments.sort(key=lambda c: c.get("created_at", ""))
 
-    # Find all @openswe / @open-swe mention positions
+    # Find all @alephat / @alephat mention positions
     tag_indices = [
         i
         for i, comment in enumerate(all_comments)
-        if any(tag in (comment.get("body") or "").lower() for tag in OPEN_SWE_TAGS)
+        if any(tag in (comment.get("body") or "").lower() for tag in ALEPHAT_TAGS)
     ]
 
     if not tag_indices:
         return []
 
-    # If this is the first @openswe invocation (only one tag), return ALL
+    # If this is the first @alephat invocation (only one tag), return ALL
     # comments so the agent has full context — inline review comments are
     # drafted before submission and appear earlier in the sorted list.
     # For repeat invocations, return everything since the previous tag.

@@ -389,7 +389,7 @@ def _slack_root_message(record: dict[str, Any]) -> str:
     repo = _repo_full_name(record.get("repo") if isinstance(record.get("repo"), dict) else None)
     repo_line = f"\n*Repository:* `{repo}`" if repo else ""
     return (
-        f"*Open SWE automation:* {record.get('name') or 'Scheduled agent'}{repo_line}\n\n"
+        f"*Alephat automation:* {record.get('name') or 'Scheduled agent'}{repo_line}\n\n"
         "A scheduled run started. Reply in this thread to follow up with the agent."
     )
 

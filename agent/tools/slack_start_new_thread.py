@@ -76,13 +76,13 @@ def _truncate_for_slack(text: str) -> str:
     if len(text) <= _VISIBLE_INSTRUCTIONS_MAX_CHARS:
         return text
     omitted = len(text) - _VISIBLE_INSTRUCTIONS_MAX_CHARS
-    return f"{text[:_VISIBLE_INSTRUCTIONS_MAX_CHARS].rstrip()}\n\n…truncated {omitted} chars; the new Open SWE thread received the full instructions."
+    return f"{text[:_VISIBLE_INSTRUCTIONS_MAX_CHARS].rstrip()}\n\n…truncated {omitted} chars; the new Alephat thread received the full instructions."
 
 
 def _visible_message(title: str, instructions: str, repo: dict[str, str] | None) -> str:
     repo_line = f"\n*Repository:* `{repo['owner']}/{repo['name']}`" if repo else ""
     return (
-        f"*Open SWE breakout thread:* {title}{repo_line}\n\n"
+        f"*Alephat breakout thread:* {title}{repo_line}\n\n"
         f"*Instructions for the new thread:*\n{_truncate_for_slack(instructions)}"
     )
 
@@ -90,7 +90,7 @@ def _visible_message(title: str, instructions: str, repo: dict[str, str] | None)
 def _run_links_section(thread_id: str) -> str:
     dashboard_url = dashboard_thread_url(thread_id)
     trace_url = get_langsmith_trace_url(thread_id)
-    lines = ["## Open SWE Links"]
+    lines = ["## Alephat Links"]
     if dashboard_url:
         lines.append(f"- Web: {dashboard_url}")
     if trace_url:
@@ -112,7 +112,7 @@ def _run_prompt(
     channel_id = original_slack_thread.get("channel_id", "")
     thread_ts = original_slack_thread.get("thread_ts", "")
     return (
-        "You were started from another Open SWE Slack thread as a breakout task.\n\n"
+        "You were started from another Alephat Slack thread as a breakout task.\n\n"
         f"## Breakout Title\n{title}\n\n"
         f"## Default Repository Hint\n{repo_text}\n"
         "Use this repository unless the instructions below clearly identify a different repository.\n\n"
@@ -150,7 +150,7 @@ async def slack_start_new_thread(
     instructions: str,
     default_repo: str | None = None,
 ) -> dict[str, Any]:
-    """Start a new Open SWE thread in a top-level Slack message in the current channel."""
+    """Start a new Alephat thread in a top-level Slack message in the current channel."""
     config = get_config()
     configurable = config.get("configurable", {})
     current_slack_thread = configurable.get("slack_thread")

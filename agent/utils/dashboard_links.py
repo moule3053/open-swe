@@ -3,7 +3,7 @@
 import os
 from urllib.parse import quote
 
-_DEFAULT_DASHBOARD_BASE_URL = "https://openswe.vercel.app"
+_DEFAULT_DASHBOARD_BASE_URL = "http://127.0.0.1:18080"
 
 
 def _dashboard_base_url() -> str:

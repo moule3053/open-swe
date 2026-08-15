@@ -3,11 +3,11 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: openswe-harness
+  name: alephat-harness
   namespace: alephat
 spec:
   scaleTargetRef:
-    name: openswe-harness
+    name: alephat-harness
   minReplicaCount: 0
   maxReplicaCount: 50
   cooldownPeriod: 120

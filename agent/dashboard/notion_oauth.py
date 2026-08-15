@@ -16,7 +16,7 @@ from langgraph_sdk import get_client
 from ..encryption import decrypt_token, encrypt_token
 
 NOTION_MCP_URL = "https://mcp.notion.com/mcp"
-NOTION_STATE_COOKIE_NAME = "osw_notion_oauth_state"
+NOTION_STATE_COOKIE_NAME = "alephat_notion_oauth_state"
 NOTION_OAUTH_FLOW_NAMESPACE: list[str] = ["notion_oauth_flows"]
 
 _NOTION_HOST = "mcp.notion.com"
@@ -142,7 +142,7 @@ async def register_notion_oauth_client(
         raise NotionOAuthError(502, "Notion OAuth metadata missing registration endpoint")
     _require_notion_https_url(registration_endpoint, "registration endpoint")
     body: dict[str, Any] = {
-        "client_name": os.environ.get("NOTION_MCP_CLIENT_NAME", "Open SWE"),
+        "client_name": os.environ.get("NOTION_MCP_CLIENT_NAME", "Alephat"),
         "redirect_uris": [redirect_uri],
         "grant_types": ["authorization_code", "refresh_token"],
         "response_types": ["code"],
@@ -313,7 +313,7 @@ async def _request_token(
                 headers={
                     "Accept": "application/json",
                     "Content-Type": "application/x-www-form-urlencoded",
-                    "User-Agent": "OpenSWE-Notion-MCP/1.0",
+                    "User-Agent": "Alephat-Notion-MCP/1.0",
                 },
                 data=body,
             )

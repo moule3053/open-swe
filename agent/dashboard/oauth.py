@@ -22,8 +22,8 @@ from ..utils.http import DEFAULT_HTTP_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
-COOKIE_NAME = "osw_session"
-STATE_COOKIE_NAME = "osw_oauth_state"
+COOKIE_NAME = "alephat_session"
+STATE_COOKIE_NAME = "alephat_oauth_state"
 SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
 STATE_TTL_SECONDS = 600
 JWT_ALG = "HS256"

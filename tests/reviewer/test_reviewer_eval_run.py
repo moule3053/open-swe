@@ -78,8 +78,8 @@ def test_reviewer_eval_config_sets_target_env() -> None:
 
 
 def test_reviewer_eval_config_coerces_langsmith_project() -> None:
-    config = _coerce_config({"langsmith_project": "open-swe-evals"})
-    assert config == {"langsmith_project": "open-swe-evals"}
+    config = _coerce_config({"langsmith_project": "alephat-evals"})
+    assert config == {"langsmith_project": "alephat-evals"}
 
 
 def test_apply_langsmith_project_uses_config_default() -> None:

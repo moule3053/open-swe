@@ -156,12 +156,12 @@ async def test_installation_token_includes_permissions(monkeypatch: pytest.Monke
     monkeypatch.setattr(github_app.httpx, "AsyncClient", _FakeAsyncClient)
 
     await github_app.get_github_app_installation_token_with_expiry(
-        repositories=["open-swe"], permissions={"workflows": "write", "contents": "write"}
+        repositories=["alephat"], permissions={"workflows": "write", "contents": "write"}
     )
 
     assert _FakeAsyncClient.last_post is not None
     assert _FakeAsyncClient.last_post["json"] == {
-        "repositories": ["open-swe"],
+        "repositories": ["alephat"],
         "permissions": {"contents": "write", "workflows": "write"},
     }
 

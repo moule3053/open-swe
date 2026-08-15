@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openswe-ui
-  namespace: openswe
+  name: alephat-ui
+  namespace: alephat
   labels:
-    app: openswe-ui
+    app: alephat-ui
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: openswe-ui
+      app: alephat-ui
   template:
     metadata:
       labels:
-        app: openswe-ui
+        app: alephat-ui
     spec:
       containers:
         - name: ui
-          image: us-central1-docker.pkg.dev/neurolonicweb/neurolonic-web-app/openswe-ui:latest
+          image: us-central1-docker.pkg.dev/your-gcp-project-id/alephat/alephat-ui:latest
           imagePullPolicy: Always
           env:
             - name: API_UPSTREAM
-              value: openswe-api:80
+              value: alephat-api:80
             - name: NGINX_ENVSUBST_FILTER
               value: API_UPSTREAM
           ports:
@@ -50,11 +50,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: openswe-ui
-  namespace: openswe
+  name: alephat-ui
+  namespace: alephat
 spec:
   selector:
-    app: openswe-ui
+    app: alephat-ui
   ports:
     - name: http
       port: 80

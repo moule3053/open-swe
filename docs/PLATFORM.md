@@ -6,9 +6,9 @@ Implementation of [`SERVICE_CONTRACTS.md`](./SERVICE_CONTRACTS.md).
 
 | Service | Module | Image / Dockerfile | Port | Role |
 |---|---|---|---|---|
-| **API** | `openswe_platform.api.app:app` | `deploy/Dockerfile.api` | 8080 | Tasks, approvals, MCP CRUD, SSE, **outbox → NATS** |
-| **Webhook** | `openswe_platform.webhook.app:app` | `deploy/Dockerfile.webhook` | 8081 | GitHub/Slack ingress → Postgres + outbox |
-| **Harness** | `openswe_platform.harness.worker` | `deploy/Dockerfile.harness` | — | **NATS consumer**; lease, LiteLLM, sandboxes, MCP, Postgres checkpoints |
+| **API** | `alephat_platform.api.app:app` | `deploy/Dockerfile.api` | 8080 | Tasks, approvals, MCP CRUD, SSE, **outbox → NATS** |
+| **Webhook** | `alephat_platform.webhook.app:app` | `deploy/Dockerfile.webhook` | 8081 | GitHub/Slack ingress → Postgres + outbox |
+| **Harness** | `alephat_platform.harness.worker` | `deploy/Dockerfile.harness` | — | **NATS consumer**; lease, LiteLLM, sandboxes, MCP, Postgres checkpoints |
 | **UI** | `ui/` | `deploy/Dockerfile.ui` | 3000 | `/platform` task console; same-origin proxy to API |
 
 ### Does the harness run separately?
@@ -122,7 +122,7 @@ docker-compose -f deploy/docker-compose.yml --env-file deploy/.env --profile wit
 
 ```bash
 make platform-deps          # postgres + nats
-export DATABASE_URL=postgresql+asyncpg://openswe:openswe@localhost:5432/openswe
+export DATABASE_URL=postgresql+asyncpg://alephat:alephat@localhost:5432/alephat
 export NATS_URL=nats://localhost:4222
 make platform-api           # terminal 1
 make platform-webhook       # terminal 2
@@ -132,7 +132,7 @@ make platform-harness       # terminal 3 — can start later; drains backlog
 ## Package layout
 
 ```text
-openswe_platform/
+alephat_platform/
   common/     # enums, db, models, outbox, tasks, resolution, messaging
   api/        # FastAPI control plane
   webhook/    # FastAPI public ingress
@@ -160,4 +160,4 @@ kubectl apply -k deploy/k8s/
 
 ## Legacy monolith
 
-The existing `agent/` LangGraph app (`make dev`) remains available during the strangler migration. New multi-service traffic uses `openswe_platform.*`.
+The existing `agent/` LangGraph app (`make dev`) remains available during the strangler migration. New multi-service traffic uses `alephat_platform.*`.

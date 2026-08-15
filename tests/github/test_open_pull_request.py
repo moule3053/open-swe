@@ -91,9 +91,9 @@ def _set_config(monkeypatch: pytest.MonkeyPatch, configurable: dict[str, Any]) -
 def _open() -> dict[str, Any]:
     return asyncio.run(
         opr._open_pull_request(
-            owner="langchain-ai",
-            repo="open-swe",
-            head="open-swe/feature",
+            owner="moule3053",
+            repo="alephat",
+            head="alephat/feature",
             base="main",
             title="feat: x",
             body="body",
@@ -136,7 +136,7 @@ def test_uses_user_token_for_slack_with_login(monkeypatch: pytest.MonkeyPatch) -
     assert client.post_calls[0]["headers"]["Authorization"] == "Bearer user-tok"
     assert client.post_calls[0]["json"] == {
         "title": "feat: x",
-        "head": "open-swe/feature",
+        "head": "alephat/feature",
         "base": "main",
         "body": "body",
         "draft": True,
@@ -194,7 +194,7 @@ def test_falls_back_to_bot_for_github_source(monkeypatch: pytest.MonkeyPatch) ->
 
     client = _FakeClient(
         post=_FakeResponse(
-            201, {"html_url": "https://x/pull/2", "number": 2, "user": {"login": "open-swe[bot]"}}
+            201, {"html_url": "https://x/pull/2", "number": 2, "user": {"login": "alephat[bot]"}}
         )
     )
     _install_client(monkeypatch, client)
@@ -249,7 +249,7 @@ def test_returns_existing_pr_on_422(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result["number"] == 9
     pr_lookup = [call for call in client.get_calls if call["params"]]
     assert pr_lookup[0]["params"] == {
-        "head": "langchain-ai:open-swe/feature",
+        "head": "moule3053:alephat/feature",
         "state": "open",
     }
 
@@ -287,9 +287,9 @@ def test_404_create_returns_actionable_access_diagnostic(
     assert result["success"] is False
     assert result["code"] == "github_app_access_missing_or_repo_not_found"
     assert result["recoverable_by_agent"] is False
-    assert result["owner"] == "langchain-ai"
-    assert result["repo"] == "open-swe"
-    assert result["head"] == "open-swe/feature"
+    assert result["owner"] == "moule3053"
+    assert result["repo"] == "alephat"
+    assert result["head"] == "alephat/feature"
     assert result["base"] == "main"
     assert result["branch_pushed"] is True
     assert result["pr_created"] is False
@@ -308,11 +308,11 @@ def test_preflight_head_branch_404_reports_branch_not_pushed(
     client = _RoutingClient(
         post=_FakeResponse(201, {"html_url": "u", "number": 1, "user": {}}),
         get_routes={
-            "/repos/langchain-ai/open-swe/branches/main": _FakeResponse(200, {"name": "main"}),
-            "/repos/langchain-ai/open-swe/branches/open-swe%2Ffeature": _FakeResponse(
+            "/repos/moule3053/alephat/branches/main": _FakeResponse(200, {"name": "main"}),
+            "/repos/moule3053/alephat/branches/alephat%2Ffeature": _FakeResponse(
                 404, {"message": "Branch not found"}
             ),
-            "/repos/langchain-ai/open-swe": _FakeResponse(200, {"private": True}),
+            "/repos/moule3053/alephat": _FakeResponse(200, {"private": True}),
         },
     )
     _install_client(monkeypatch, client)
@@ -334,9 +334,9 @@ async def _coro(value: Any) -> Any:
 def _open_with_body(body: str) -> dict[str, Any]:
     return asyncio.run(
         opr._open_pull_request(
-            owner="langchain-ai",
-            repo="open-swe",
-            head="open-swe/feature",
+            owner="moule3053",
+            repo="alephat",
+            head="alephat/feature",
             base="main",
             title="feat: x",
             body=body,
@@ -368,7 +368,7 @@ def test_appends_slack_reference_for_private_repo(monkeypatch: pytest.MonkeyPatc
 
     client = _RoutingClient(
         post=_FakeResponse(201, {"html_url": "u", "number": 1, "user": {}}),
-        get_routes={"/repos/langchain-ai/open-swe": _FakeResponse(200, {"private": True})},
+        get_routes={"/repos/moule3053/alephat": _FakeResponse(200, {"private": True})},
     )
     _install_client(monkeypatch, client)
 
@@ -400,7 +400,7 @@ def test_uses_stored_slack_permalink_reference(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(opr, "get_slack_permalink", fail_permalink)
     client = _RoutingClient(
         post=_FakeResponse(201, {"html_url": "u", "number": 1, "user": {}}),
-        get_routes={"/repos/langchain-ai/open-swe": _FakeResponse(200, {"private": True})},
+        get_routes={"/repos/moule3053/alephat": _FakeResponse(200, {"private": True})},
     )
     _install_client(monkeypatch, client)
 
@@ -519,7 +519,7 @@ def test_omits_slack_reference_for_public_repo(monkeypatch: pytest.MonkeyPatch) 
 
     client = _RoutingClient(
         post=_FakeResponse(201, {"html_url": "u", "number": 1, "user": {}}),
-        get_routes={"/repos/langchain-ai/open-swe": _FakeResponse(200, {"private": False})},
+        get_routes={"/repos/moule3053/alephat": _FakeResponse(200, {"private": False})},
     )
     _install_client(monkeypatch, client)
 
@@ -548,7 +548,7 @@ def test_public_repo_appends_plan_but_not_slack_reference(
 
     client = _RoutingClient(
         post=_FakeResponse(201, {"html_url": "u", "number": 1, "user": {}}),
-        get_routes={"/repos/langchain-ai/open-swe": _FakeResponse(200, {"private": False})},
+        get_routes={"/repos/moule3053/alephat": _FakeResponse(200, {"private": False})},
     )
     _install_client(monkeypatch, client)
 
@@ -571,7 +571,7 @@ def test_appends_linear_reference_for_private_repo(monkeypatch: pytest.MonkeyPat
 
     client = _RoutingClient(
         post=_FakeResponse(201, {"html_url": "u", "number": 1, "user": {}}),
-        get_routes={"/repos/langchain-ai/open-swe": _FakeResponse(200, {"private": True})},
+        get_routes={"/repos/moule3053/alephat": _FakeResponse(200, {"private": True})},
     )
     _install_client(monkeypatch, client)
 
@@ -587,7 +587,7 @@ def test_appends_github_issue_reference_for_private_repo(monkeypatch: pytest.Mon
         {
             "source": "github",
             "github_issue": {
-                "url": "https://github.com/langchain-ai/open-swe/issues/42",
+                "url": "https://github.com/moule3053/alephat/issues/42",
                 "number": 42,
             },
         },
@@ -596,14 +596,14 @@ def test_appends_github_issue_reference_for_private_repo(monkeypatch: pytest.Mon
 
     client = _RoutingClient(
         post=_FakeResponse(201, {"html_url": "u", "number": 1, "user": {}}),
-        get_routes={"/repos/langchain-ai/open-swe": _FakeResponse(200, {"private": True})},
+        get_routes={"/repos/moule3053/alephat": _FakeResponse(200, {"private": True})},
     )
     _install_client(monkeypatch, client)
 
     _open_with_body("body")
 
     sent_body = client.post_calls[0]["json"]["body"]
-    assert "- GitHub issue: [#42](https://github.com/langchain-ai/open-swe/issues/42)" in sent_body
+    assert "- GitHub issue: [#42](https://github.com/moule3053/alephat/issues/42)" in sent_body
 
 
 def test_skips_append_when_no_source_context(monkeypatch: pytest.MonkeyPatch) -> None:

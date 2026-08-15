@@ -82,7 +82,7 @@ async def test_search_issues_filters_without_text(monkeypatch: pytest.MonkeyPatc
         }
 
     monkeypatch.setattr(linear, "_graphql_request", fake_graphql_request)
-    filters = {"labels": {"some": {"name": {"eq": "open-swe"}}}}
+    filters = {"labels": {"some": {"name": {"eq": "alephat"}}}}
 
     result = await linear.search_issues(filters=filters, limit=1)
 

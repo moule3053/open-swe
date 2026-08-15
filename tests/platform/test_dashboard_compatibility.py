@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from openswe_platform.api.deps import AuthContext
-from openswe_platform.api.routes_dashboard import (
+from alephat_platform.api.deps import AuthContext
+from alephat_platform.api.routes_dashboard import (
     AgentInstructionsCreate,
     AgentInstructionsUpdate,
     DashboardMessageRequest,
@@ -37,8 +37,8 @@ from openswe_platform.api.routes_dashboard import (
     put_team_settings,
     task_to_agent_thread,
 )
-from openswe_platform.common.config import get_settings
-from openswe_platform.common.models import Message, OrgSettings, Task, UserSettings
+from alephat_platform.common.config import get_settings
+from alephat_platform.common.models import Message, OrgSettings, Task, UserSettings
 
 
 @pytest.mark.asyncio
@@ -66,7 +66,7 @@ async def test_get_messages_includes_uncheckpointed_db_messages(patch_load_check
     db.execute.return_value = mock_result
 
     with patch(
-        "openswe_platform.api.routes_dashboard.load_latest_checkpoint", return_value=mock_cp
+        "alephat_platform.api.routes_dashboard.load_latest_checkpoint", return_value=mock_cp
     ):
         lg_messages = await _get_langgraph_messages_for_task(db, task_id)
         ui_messages = await _get_messages_for_task(db, task_id)
@@ -130,7 +130,7 @@ async def test_get_messages_flattens_structured_text_content():
     db.execute.return_value = mock_result
 
     with patch(
-        "openswe_platform.api.routes_dashboard.load_latest_checkpoint", return_value=mock_cp
+        "alephat_platform.api.routes_dashboard.load_latest_checkpoint", return_value=mock_cp
     ):
         messages = await _get_messages_for_task(db, task_id)
 
@@ -280,11 +280,11 @@ async def test_commands_preserve_the_optimistic_message_id():
 
     with (
         patch(
-            "openswe_platform.api.routes_dashboard._get_task_by_id_or_thread_id",
+            "alephat_platform.api.routes_dashboard._get_task_by_id_or_thread_id",
             return_value=None,
         ),
         patch(
-            "openswe_platform.api.routes_tasks.create_task",
+            "alephat_platform.api.routes_tasks.create_task",
             new=AsyncMock(return_value=task),
         ) as create_task,
     ):
@@ -307,8 +307,8 @@ async def test_commands_preserve_the_optimistic_message_id():
 
 
 def test_message_id_survives_worker_context_and_checkpoint():
-    from openswe_platform.harness import agents
-    from openswe_platform.harness.worker import _message_input
+    from alephat_platform.harness import agents
+    from alephat_platform.harness.worker import _message_input
 
     message_id = uuid.uuid4()
     db_message = Message(
@@ -372,7 +372,7 @@ async def test_put_profile_persists_dashboard_fields():
         subagent_reasoning_effort="medium",
         default_repo="acme/test-repo",
         base_branch="develop",
-        branch_prefix="open-swe/",
+        branch_prefix="alephat/",
         auto_fix_ci=False,
         create_prs=True,
         review_draft_prs=True,
@@ -390,7 +390,7 @@ async def test_put_profile_persists_dashboard_fields():
 @pytest.mark.asyncio
 async def test_get_repos_matches_dashboard_contract():
     with patch(
-        "openswe_platform.api.routes_dashboard._fetch_installed_github_repositories",
+        "alephat_platform.api.routes_dashboard._fetch_installed_github_repositories",
         return_value=(
             [{"id": 42, "account": "acme", "account_type": "Organization"}],
             [
@@ -573,15 +573,15 @@ async def test_message_arriving_after_terminal_transition_starts_follow_up_run()
 
     with (
         patch(
-            "openswe_platform.api.routes_dashboard._get_task_by_id_or_thread_id",
+            "alephat_platform.api.routes_dashboard._get_task_by_id_or_thread_id",
             return_value=task,
         ),
-        patch("openswe_platform.api.routes_dashboard.add_message", new=AsyncMock()) as add_message,
+        patch("alephat_platform.api.routes_dashboard.add_message", new=AsyncMock()) as add_message,
         patch(
-            "openswe_platform.api.routes_dashboard.enqueue_task_work", new=AsyncMock()
+            "alephat_platform.api.routes_dashboard.enqueue_task_work", new=AsyncMock()
         ) as enqueue,
         patch(
-            "openswe_platform.api.routes_dashboard._get_messages_for_task",
+            "alephat_platform.api.routes_dashboard._get_messages_for_task",
             return_value=[],
         ),
     ):

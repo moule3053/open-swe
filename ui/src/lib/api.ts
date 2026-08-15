@@ -1,7 +1,7 @@
 /**
- * Typed client for the open-swe dashboard backend.
+ * Typed client for the alephat dashboard backend.
  *
- * All requests are sent with credentials so the httpOnly `osw_session`
+ * All requests are sent with credentials so the httpOnly `alephat_session`
  * cookie set by the OAuth callback rides along on cross-origin calls.
  */
 
@@ -430,7 +430,7 @@ export interface PrReviewComment {
   body: string
   html_url: string
   created_at: string
-  is_open_swe: boolean
+  is_alephat: boolean
   // Outdated: the line no longer appears in the current diff, so it can't render inline.
   is_outdated: boolean
 }

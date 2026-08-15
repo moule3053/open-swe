@@ -11,7 +11,7 @@ class _StubLocalShellBackend:
 
 
 def test_create_local_sandbox_creates_missing_root_dir(monkeypatch, tmp_path):
-    root = tmp_path / "nested" / "openswe-sandbox"
+    root = tmp_path / "nested" / "alephat-sandbox"
     monkeypatch.setenv("LOCAL_SANDBOX_ROOT_DIR", str(root))
     monkeypatch.setattr(local_mod, "LocalShellBackend", _StubLocalShellBackend)
 

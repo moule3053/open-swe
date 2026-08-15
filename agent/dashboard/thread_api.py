@@ -1631,7 +1631,7 @@ async def get_dashboard_thread_state(
 
 def _recovery_patch_filename(thread_id: str) -> str:
     safe = "".join(c if c.isalnum() or c in {"-", "_", "."} else "-" for c in thread_id)
-    return f"open-swe-{(safe or 'thread')[:80]}.patch"
+    return f"alephat-{(safe or 'thread')[:80]}.patch"
 
 
 def _response_output(result: Any) -> str:
@@ -1771,7 +1771,7 @@ def merge_base(repo):
 
 
 def write_patch(repo, base):
-    patch_path = Path('/tmp') / ((PAYLOAD.get('thread_key') or 'open-swe-recovery') + '.patch')
+    patch_path = Path('/tmp') / ((PAYLOAD.get('thread_key') or 'alephat-recovery') + '.patch')
     with patch_path.open('wb') as patch_file:
         tracked = git(repo, ['diff', '--binary', '--full-index', base, '--', '.']).stdout
         patch_file.write(tracked)

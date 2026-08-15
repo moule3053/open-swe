@@ -1004,7 +1004,7 @@ async def accessible_repo_full_names(login: str) -> frozenset[str]:
 async def list_repos(
     session: dict[str, Any] = _SESSION_DEP,
 ) -> dict[str, Any]:
-    """List repos where open-swe is installed and the user has access."""
+    """List repos where alephat is installed and the user has access."""
     installations, repositories = await _fetch_user_installations_and_repos(session["sub"])
     return {
         "installations": [
@@ -1152,7 +1152,7 @@ async def api_create_review_comment(
     if not body:
         raise HTTPException(422, "comment body is required")
     # Post as the signed-in user (their user-to-server token), so the comment is
-    # attributed to them rather than the Open SWE app.
+    # attributed to them rather than the Alephat app.
     token = await get_valid_access_token(session["sub"])
     if not token:
         raise HTTPException(401, "GitHub re-auth required")

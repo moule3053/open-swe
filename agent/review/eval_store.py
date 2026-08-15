@@ -12,7 +12,7 @@ import re
 
 EVALS_NAMESPACE: list[str] = ["evals"]
 REVIEWER_EVAL_KEY = "reviewer"
-DEFAULT_EVAL_PROJECT = "open-swe-evals"
+DEFAULT_EVAL_PROJECT = "alephat-evals"
 
 _LOG_TAIL_CHARS = 12000
 _EXPERIMENT_URL_RE = re.compile(r"https://\S*smith\.langchain\.com/\S+")

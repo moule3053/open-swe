@@ -1,13 +1,13 @@
 ---
 type: Project Guide
-title: Open SWE quickstart
-description: Entry point to Open SWE, an internal coding-agent framework built on LangGraph and Deep Agents with Slack, Linear, GitHub, and dashboard workflows.
+title: Alephat quickstart
+description: Entry point to Alephat, an internal coding-agent framework built on LangGraph and Deep Agents with Slack, Linear, GitHub, and dashboard workflows.
 resource: /README.md
-tags: [open-swe, architecture, agent-platform, quickstart]
+tags: [alephat, architecture, agent-platform, quickstart]
 ---
-# Open SWE quickstart
+# Alephat quickstart
 
-Open SWE is a framework for an organization-specific coding agent. It combines a LangGraph runtime, Deep Agents-based coding and review graphs, isolated sandboxes, and collaboration surfaces in Slack, Linear, GitHub, and a web dashboard. The intended outcome is an agent that can receive engineering context, work in a repository, and report or publish its result without giving its credentials directly to the execution environment.
+Alephat is a framework for an organization-specific coding agent. It combines a LangGraph runtime, Deep Agents-based coding and review graphs, isolated sandboxes, and collaboration surfaces in Slack, Linear, GitHub, and a web dashboard. The intended outcome is an agent that can receive engineering context, work in a repository, and report or publish its result without giving its credentials directly to the execution environment.
 
 Start here when orienting to the repository:
 
@@ -21,7 +21,7 @@ Start here when orienting to the repository:
 
 The primary coding graph is assembled with `deepagents.create_deep_agent` in `agent/server.py`. It receives source context from a Slack thread, Linear issue, GitHub interaction, or dashboard chat; works against a sandbox associated with the thread; and uses a deliberately curated set of collaboration and research tools. The [runtime architecture](runtime-architecture.md) describes the graph factory and durable thread behavior.
 
-Open SWE also separates code review from code modification. The read-only reviewer graph prepares a PR-specific checkout and changed-line context before publishing findings, while the analyzer graph learns a repository-specific review style. These user-facing flows are documented in [workflows](workflows.md), and their evaluator is documented in [operations and quality](operations-quality.md).
+Alephat also separates code review from code modification. The read-only reviewer graph prepares a PR-specific checkout and changed-line context before publishing findings, while the analyzer graph learns a repository-specific review style. These user-facing flows are documented in [workflows](workflows.md), and their evaluator is documented in [operations and quality](operations-quality.md).
 
 The web dashboard is not a separate backend: it is a Vite/TanStack client over FastAPI endpoints mounted in the same application as the webhooks. It surfaces agent threads, plans, schedules, review administration, profiles, and workspace settings; see [dashboard](dashboard.md).
 

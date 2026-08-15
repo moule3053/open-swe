@@ -10,9 +10,9 @@ import pytest
 
 from agent.review.findings import Finding, new_finding
 from agent.review.publish import (
+    alephat_review_exists,
     clear_review_started_comment,
     fetch_pr_review_threads,
-    open_swe_review_exists,
     parse_review_comment_marker,
     post_pull_request_review,
     post_review_started_comment,
@@ -74,7 +74,7 @@ def _isolate_publish_review_pr_state() -> Iterator[None]:
     with (
         patch("agent.tools.publish_review.fetch_pr_review_threads", AsyncMock(return_value=[])),
         patch("agent.tools.publish_review.replace_findings", AsyncMock()),
-        patch("agent.tools.publish_review.open_swe_review_exists", AsyncMock(return_value=False)),
+        patch("agent.tools.publish_review.alephat_review_exists", AsyncMock(return_value=False)),
         patch("agent.tools.publish_review.clear_review_started_comment", AsyncMock()),
         patch(
             "agent.tools.publish_review.resolve_review_head_sha",
@@ -88,10 +88,10 @@ def _isolate_publish_review_pr_state() -> Iterator[None]:
 
 def test_render_inline_comment_body_without_suggestion() -> None:
     body = render_inline_comment_body(_f(description="just text"))
-    assert "<!-- open-swe-review-comment" in body
+    assert "<!-- alephat-review-comment" in body
     assert '"id":"f_' in body
     assert "just text" in body
-    assert "Your feedback helps Open SWE learn." in body
+    assert "Your feedback helps Alephat learn." in body
     assert "👍 or 👎" in body
     assert "tell us if this review comment was useful" in body
 
@@ -191,10 +191,10 @@ def test_parse_review_comment_marker_accepts_valid_marker() -> None:
 
 def test_parse_review_comment_marker_rejects_malformed_marker() -> None:
     assert parse_review_comment_marker("plain body") is None
-    assert parse_review_comment_marker("<!-- open-swe-review-comment {} -->") is None
+    assert parse_review_comment_marker("<!-- alephat-review-comment {} -->") is None
     assert (
         parse_review_comment_marker(
-            '<!-- open-swe-review-comment {"id":"f1","file_path":"x.py","side":"BAD"} -->'
+            '<!-- alephat-review-comment {"id":"f1","file_path":"x.py","side":"BAD"} -->'
         )
         is None
     )
@@ -207,7 +207,7 @@ def test_render_inline_comment_payload_single_line() -> None:
     assert payload["line"] == 10
     assert payload["side"] == "RIGHT"
     assert "boom" in payload["body"]
-    assert "<!-- open-swe-review-comment" in payload["body"]
+    assert "<!-- alephat-review-comment" in payload["body"]
 
 
 def test_render_inline_comment_payload_multi_line_uses_start_fields() -> None:
@@ -225,19 +225,19 @@ def test_render_inline_comment_payload_returns_none_for_file_level() -> None:
 
 def test_render_review_body_with_findings_uses_potential_issue_phrasing() -> None:
     body = render_review_body(pr_number=123, surfaced_count=2)
-    assert body.startswith("**Open SWE Review** found 2 potential issues.")
-    assert "<!-- open-swe-reviewer pr=123 -->" in body
+    assert body.startswith("**Alephat Review** found 2 potential issues.")
+    assert "<!-- alephat-reviewer pr=123 -->" in body
 
 
 def test_render_review_body_singular_finding() -> None:
     body = render_review_body(pr_number=123, surfaced_count=1)
-    assert body.startswith("**Open SWE Review** found 1 potential issue.")
+    assert body.startswith("**Alephat Review** found 1 potential issue.")
 
 
 def test_render_review_body_no_findings_message() -> None:
     body = render_review_body(pr_number=99, surfaced_count=0)
-    assert "## ✅ Open SWE Review: No issues found" in body
-    assert "Open SWE reviewed this PR and found no potential bugs to report." in body
+    assert "## ✅ Alephat Review: No issues found" in body
+    assert "Alephat reviewed this PR and found no potential bugs to report." in body
     assert "additional" not in body
 
 
@@ -248,7 +248,7 @@ def test_render_review_body_with_additional_findings_and_ui_link() -> None:
         additional_findings_count=2,
         ui_url="https://dash.example/agents/reviews/o/r/99",
     )
-    assert "## ✅ Open SWE Review: No issues found" in body
+    assert "## ✅ Alephat Review: No issues found" in body
     assert "2 additional findings can be viewed in the web app." in body
     assert "[Open in Web](https://dash.example/agents/reviews/o/r/99)" in body
 
@@ -277,7 +277,7 @@ def test_render_review_body_additional_findings_zero_omits_line() -> None:
 def test_render_status_comment_reviewing_includes_ui_link(monkeypatch: Any) -> None:
     monkeypatch.setenv("DASHBOARD_BASE_URL", "https://dash.example")
     body = render_status_comment(pr_number=7, thread_id="tid-1")
-    assert "🔍 Open SWE Review: in progress" in body
+    assert "🔍 Alephat Review: in progress" in body
     assert "[Open in Web](https://dash.example/agents/tid-1)" in body
     assert status_comment_marker(7) in body
 
@@ -296,7 +296,7 @@ def test_render_review_body_orders_ui_link_before_trace() -> None:
         ui_url="https://dash.example/agents/tid-1",
         trace_url="https://trace.example/x",
     )
-    assert "[Open in Web](https://dash.example/agents/tid-1) • [View Open SWE trace]" in body
+    assert "[Open in Web](https://dash.example/agents/tid-1) • [View Alephat trace]" in body
 
 
 @pytest.mark.asyncio
@@ -397,7 +397,7 @@ def test_render_review_body_combines_inline_and_out_of_diff() -> None:
     )
     assert "found 2 potential issues." in body
     assert "2 out-of-diff findings</summary>" in body
-    assert "<!-- open-swe-reviewer pr=7 -->" in body
+    assert "<!-- alephat-reviewer pr=7 -->" in body
 
 
 def test_render_review_body_includes_trace_link_when_provided() -> None:
@@ -406,8 +406,8 @@ def test_render_review_body_includes_trace_link_when_provided() -> None:
         surfaced_count=0,
         trace_url="https://smith.langchain.com/o/t/project/p/t/thread-id",
     )
-    assert "[View Open SWE trace](https://smith.langchain.com/o/t/project/p/t/thread-id)" in body
-    assert body.endswith("<!-- open-swe-reviewer pr=123 -->")
+    assert "[View Alephat trace](https://smith.langchain.com/o/t/project/p/t/thread-id)" in body
+    assert body.endswith("<!-- alephat-reviewer pr=123 -->")
 
 
 async def test_publish_review_eval_mode_does_not_call_github() -> None:
@@ -848,7 +848,7 @@ async def test_publish_review_does_not_surface_out_of_diff_finding() -> None:
         patch("agent.tools.publish_review.list_findings_async", AsyncMock(return_value=findings)),
         patch("agent.tools.publish_review.post_pull_request_review", post_review),
         patch(
-            "agent.tools.publish_review._open_swe_already_reviewed",
+            "agent.tools.publish_review._alephat_already_reviewed",
             AsyncMock(return_value=True),
         ),
         patch(
@@ -881,12 +881,10 @@ async def test_publish_review_does_not_surface_out_of_diff_finding() -> None:
 
 
 @pytest.mark.asyncio
-async def test_publish_review_skips_duplicate_empty_summary_when_open_swe_already_reviewed() -> (
-    None
-):
+async def test_publish_review_skips_duplicate_empty_summary_when_alephat_already_reviewed() -> None:
     """A push landing mid-run is queued into the still-running first-review run,
     whose configurable still says re_review=False. With nothing to surface, the
-    empty-review guard must key off the existing Open SWE review summary on the
+    empty-review guard must key off the existing Alephat review summary on the
     PR (not the stale flag) so it does not post a duplicate "No issues found"."""
     from agent.tools.publish_review import _publish_review_async
 
@@ -899,7 +897,7 @@ async def test_publish_review_skips_duplicate_empty_summary_when_open_swe_alread
     with (
         patch("agent.tools.publish_review.get_thread_id_from_runtime", return_value="tid"),
         patch("agent.tools.publish_review.list_findings_async", AsyncMock(return_value=[])),
-        patch("agent.tools.publish_review.open_swe_review_exists", review_exists),
+        patch("agent.tools.publish_review.alephat_review_exists", review_exists),
         patch("agent.tools.publish_review.post_pull_request_review", post_review),
         patch("agent.tools.publish_review._resolve_threads_for_resolved_findings", resolve_threads),
         patch("agent.tools.publish_review.set_reviewer_thread_metadata", set_metadata),
@@ -989,7 +987,7 @@ async def test_publish_review_skips_review_existence_check_on_re_review() -> Non
     with (
         patch("agent.tools.publish_review.get_thread_id_from_runtime", return_value="tid"),
         patch("agent.tools.publish_review.list_findings_async", AsyncMock(return_value=[])),
-        patch("agent.tools.publish_review.open_swe_review_exists", review_exists),
+        patch("agent.tools.publish_review.alephat_review_exists", review_exists),
         patch("agent.tools.publish_review.post_pull_request_review", AsyncMock()) as post_review,
         patch(
             "agent.tools.publish_review._resolve_threads_for_resolved_findings",
@@ -1031,7 +1029,7 @@ async def test_publish_review_dedup_keys_off_durable_last_reviewed_sha() -> None
             "agent.tools.publish_review.get_thread_metadata",
             AsyncMock(return_value={"last_reviewed_sha": "oldsha"}),
         ),
-        patch("agent.tools.publish_review.open_swe_review_exists", review_exists),
+        patch("agent.tools.publish_review.alephat_review_exists", review_exists),
         patch("agent.tools.publish_review.post_pull_request_review", post_review),
         patch(
             "agent.tools.publish_review._resolve_threads_for_resolved_findings",
@@ -1058,7 +1056,7 @@ async def test_publish_review_dedup_keys_off_durable_last_reviewed_sha() -> None
 
 @pytest.mark.asyncio
 async def test_publish_review_posts_summary_when_review_existence_unknown() -> None:
-    """When the reviews API can't answer (``open_swe_review_exists`` returns
+    """When the reviews API can't answer (``alephat_review_exists`` returns
     ``None``) and there is no durable prior-review signal, the guard must NOT
     suppress — re-posting the summary is the safe failure mode, never silently
     swallowing the only review the user sees."""
@@ -1074,7 +1072,7 @@ async def test_publish_review_posts_summary_when_review_existence_unknown() -> N
             "agent.tools.publish_review.get_thread_metadata",
             AsyncMock(return_value={}),
         ),
-        patch("agent.tools.publish_review.open_swe_review_exists", review_exists),
+        patch("agent.tools.publish_review.alephat_review_exists", review_exists),
         patch("agent.tools.publish_review.post_pull_request_review", post_review),
         patch("agent.tools.publish_review.fetch_review_comments", AsyncMock(return_value=[])),
         patch(
@@ -1103,11 +1101,11 @@ async def test_publish_review_posts_summary_when_review_existence_unknown() -> N
 
 
 @pytest.mark.asyncio
-async def test_open_swe_review_exists_detects_summary_marker() -> None:
+async def test_alephat_review_exists_detects_summary_marker() -> None:
     response = MagicMock()
     response.json.return_value = [
         {"id": 1, "body": "some human review"},
-        {"id": 2, "body": f"## ✅ Open SWE Review\n\n{review_summary_marker(7)}"},
+        {"id": 2, "body": f"## ✅ Alephat Review\n\n{review_summary_marker(7)}"},
     ]
     response.raise_for_status.return_value = None
 
@@ -1116,12 +1114,12 @@ async def test_open_swe_review_exists_detects_summary_marker() -> None:
     client_cm.get = AsyncMock(return_value=response)
 
     with patch("agent.utils.github_http.httpx.AsyncClient", return_value=client_cm):
-        exists = await open_swe_review_exists(owner="o", repo="r", pr_number=7, token="t")
+        exists = await alephat_review_exists(owner="o", repo="r", pr_number=7, token="t")
     assert exists is True
 
 
 @pytest.mark.asyncio
-async def test_open_swe_review_exists_false_without_marker() -> None:
+async def test_alephat_review_exists_false_without_marker() -> None:
     response = MagicMock()
     response.json.return_value = [{"id": 1, "body": "looks good to me"}]
     response.raise_for_status.return_value = None
@@ -1131,12 +1129,12 @@ async def test_open_swe_review_exists_false_without_marker() -> None:
     client_cm.get = AsyncMock(return_value=response)
 
     with patch("agent.utils.github_http.httpx.AsyncClient", return_value=client_cm):
-        exists = await open_swe_review_exists(owner="o", repo="r", pr_number=7, token="t")
+        exists = await alephat_review_exists(owner="o", repo="r", pr_number=7, token="t")
     assert exists is False
 
 
 @pytest.mark.asyncio
-async def test_open_swe_review_exists_returns_none_on_http_error() -> None:
+async def test_alephat_review_exists_returns_none_on_http_error() -> None:
     """A failed reviews API call is reported as ``None`` (unknown), never
     ``False`` — the empty-summary dedup must not treat a transient failure as
     "no prior review exists" and double-post."""
@@ -1147,7 +1145,7 @@ async def test_open_swe_review_exists_returns_none_on_http_error() -> None:
     client_cm.get = AsyncMock(side_effect=httpx.HTTPError("boom"))
 
     with patch("agent.utils.github_http.httpx.AsyncClient", return_value=client_cm):
-        exists = await open_swe_review_exists(owner="o", repo="r", pr_number=7, token="t")
+        exists = await alephat_review_exists(owner="o", repo="r", pr_number=7, token="t")
     assert exists is None
 
 
@@ -1164,7 +1162,7 @@ async def test_re_review_backfills_existing_marker_and_skips_duplicate_post() ->
         "comments": [
             {
                 "id": 101,
-                "author": "open-swe[bot]",
+                "author": "alephat[bot]",
                 "body": render_inline_comment_body(finding),
                 "created_at": "2026-05-27T10:00:00Z",
             }
@@ -1225,7 +1223,7 @@ async def test_re_review_backfills_and_resolves_duplicate_existing_threads() -> 
             "comments": [
                 {
                     "id": 101,
-                    "author": "open-swe[bot]",
+                    "author": "alephat[bot]",
                     "body": render_inline_comment_body(finding),
                     "created_at": "2026-05-27T10:00:00Z",
                 }
@@ -1238,7 +1236,7 @@ async def test_re_review_backfills_and_resolves_duplicate_existing_threads() -> 
             "comments": [
                 {
                     "id": 102,
-                    "author": "open-swe[bot]",
+                    "author": "alephat[bot]",
                     "body": render_inline_comment_body(finding),
                     "created_at": "2026-05-27T10:01:00Z",
                 }
@@ -1305,7 +1303,7 @@ async def test_publish_review_backfills_from_threads_when_review_comments_are_em
         "comments": [
             {
                 "id": 202,
-                "author": "open-swe[bot]",
+                "author": "alephat[bot]",
                 "body": render_inline_comment_body(finding),
                 "created_at": "2026-05-27T10:00:00Z",
             }
@@ -1780,7 +1778,7 @@ async def test_fetch_pr_review_threads_parses_threads_and_comments() -> None:
                                     "nodes": [
                                         {
                                             "databaseId": 101,
-                                            "author": {"login": "open-swe[bot]"},
+                                            "author": {"login": "alephat[bot]"},
                                             "authorAssociation": "MEMBER",
                                             "body": "additionalTtlPrefixes removes lifecycle rules",
                                             "createdAt": "2026-05-23T10:00:00Z",

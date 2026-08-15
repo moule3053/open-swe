@@ -102,7 +102,7 @@ def auth(monkeypatch) -> None:  # noqa: ANN001
         return "gho_token"
 
     async def fake_get_profile(login: str) -> dict[str, Any]:
-        return {"base_branch": "main", "branch_prefix": "open-swe"}
+        return {"base_branch": "main", "branch_prefix": "alephat"}
 
     async def fake_resolve_run_email(login: str, profile: dict[str, Any]) -> str:
         return "alice@example.com"
@@ -155,7 +155,7 @@ async def test_create_agent_schedule_registers_scheduler_cron(fake_client, auth)
         name="Daily report",
         prompt="Summarize merged PRs",
         schedule="0 9 * * 1-5",
-        repo="langchain-ai/open-swe",
+        repo="moule3053/alephat",
         slack_channel_id="C0123456789",
     )
 
@@ -270,19 +270,19 @@ async def test_update_agent_schedule_rechecks_repo_access(fake_client, auth, mon
     await fake_client.store.put_item(schedules.SCHEDULES_NAMESPACE, "sched_1", record)
 
     async def repo_config(login: str, full_name: str | None) -> dict[str, str] | None:
-        assert full_name == "langchain-ai/open-swe"
-        return {"owner": "langchain-ai", "name": "open-swe"}
+        assert full_name == "moule3053/alephat"
+        return {"owner": "moule3053", "name": "alephat"}
 
     monkeypatch.setattr(schedules, "repo_config_for_user", repo_config)
 
     result = await schedules.update_agent_schedule(
         "sched_1",
         "alice",
-        ScheduleUpdateBody(repo="langchain-ai/open-swe"),
+        ScheduleUpdateBody(repo="moule3053/alephat"),
         email="alice@example.com",
     )
 
-    assert result["repo"] == "langchain-ai/open-swe"
+    assert result["repo"] == "moule3053/alephat"
 
 
 async def test_update_agent_schedule_clears_slack_channel(fake_client) -> None:  # noqa: ANN001
@@ -349,11 +349,11 @@ async def test_launch_scheduled_agent_run_skips_when_repo_access_revoked(
         "name": "Weekly dependencies",
         "prompt": "Check dependencies and open a PR if needed",
         "schedule": "0 9 * * 1",
-        "repo": {"owner": "langchain-ai", "name": "open-swe"},
+        "repo": {"owner": "langchain-ai", "name": "alephat"},
         "model": "Default",
         "effort": None,
         "base_branch": "main",
-        "branch_prefix": "open-swe",
+        "branch_prefix": "alephat",
         "enabled": True,
         "cron_id": "cron_1",
         "created_by": "alice",
@@ -386,11 +386,11 @@ async def test_launch_scheduled_agent_run_starts_fresh_agent_thread(fake_client,
         "name": "Weekly dependencies",
         "prompt": "Check dependencies and open a PR if needed",
         "schedule": "0 9 * * 1",
-        "repo": {"owner": "langchain-ai", "name": "open-swe"},
+        "repo": {"owner": "langchain-ai", "name": "alephat"},
         "model": "Default",
         "effort": None,
         "base_branch": "main",
-        "branch_prefix": "open-swe",
+        "branch_prefix": "alephat",
         "enabled": True,
         "cron_id": "cron_1",
         "created_by": "alice",
@@ -408,7 +408,7 @@ async def test_launch_scheduled_agent_run_starts_fresh_agent_thread(fake_client,
     metadata = fake_client.threads.created[0]["metadata"]
     assert metadata["source"] == "schedule"
     assert metadata["repo_owner"] == "langchain-ai"
-    assert metadata["repo_name"] == "open-swe"
+    assert metadata["repo_name"] == "alephat"
     run = fake_client.runs.created[0]
     assert run["thread_id"] == thread_id
     assert run["assistant_id"] == "agent"
@@ -432,12 +432,12 @@ async def test_launch_scheduled_agent_run_connects_slack_thread(
         "name": "Linear queue",
         "prompt": "Work the next Linear issue",
         "schedule": "*/15 * * * *",
-        "repo": {"owner": "langchain-ai", "name": "open-swe"},
+        "repo": {"owner": "langchain-ai", "name": "alephat"},
         "slack_channel_id": "C0123456789",
         "model": "Default",
         "effort": None,
         "base_branch": "main",
-        "branch_prefix": "open-swe",
+        "branch_prefix": "alephat",
         "enabled": True,
         "cron_id": "cron_1",
         "created_by": "alice",

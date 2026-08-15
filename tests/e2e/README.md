@@ -2,7 +2,7 @@
 
 This drives the **whole happy path** through two mock UIs:
 
-1. A user asks Open SWE to implement something in a **mock Slack** thread.
+1. A user asks Alephat to implement something in a **mock Slack** thread.
 2. The **real agent** runs (via `langgraph dev`): it implements the change in a
    **local temp-dir sandbox**, pushes a branch, and opens a PR on a **fake GitHub**.
 3. It posts the PR link back to the **same Slack thread** — visible in the mock UI.

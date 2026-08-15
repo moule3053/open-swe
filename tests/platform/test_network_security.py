@@ -1,6 +1,6 @@
 import pytest
 
-from openswe_platform.common.network_security import validate_remote_url
+from alephat_platform.common.network_security import validate_remote_url
 
 
 @pytest.mark.asyncio

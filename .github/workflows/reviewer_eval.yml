@@ -23,11 +23,11 @@ on:
       dataset_name:
         description: LangSmith dataset
         type: string
-        default: openswe-reviewer-v1
+        default: alephat-reviewer-v1
       experiment_prefix:
         description: Run name (LangSmith experiment prefix)
         type: string
-        default: openswe-review-confidence
+        default: alephat-review-confidence
       max_concurrency:
         description: Max concurrent PRs
         type: string
@@ -59,7 +59,7 @@ on:
       langsmith_project:
         description: LangSmith tracing project for eval traces
         type: string
-        default: open-swe-evals
+        default: alephat-evals
       assistant_id:
         description: Reviewer assistant id
         type: string

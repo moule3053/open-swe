@@ -7,7 +7,7 @@ import pytest
 
 dispatch = importlib.import_module("agent.dispatch")
 
-_ABSOLUTE = "https://open-swe-v3-abc.us.langgraph.app/webhooks/run-complete"
+_ABSOLUTE = "https://alephat-v3-abc.us.langgraph.app/webhooks/run-complete"
 
 
 def test_is_loopback_webhook_relative() -> None:

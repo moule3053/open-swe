@@ -10,9 +10,9 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from agent.dashboard.oauth import COOKIE_NAME, decode_session, issue_session
-from openswe_platform.api import routes_oauth
-from openswe_platform.api.deps import get_auth
-from openswe_platform.common.config import clear_settings_cache
+from alephat_platform.api import routes_oauth
+from alephat_platform.api.deps import get_auth
+from alephat_platform.common.config import clear_settings_cache
 
 
 def _configure_oauth(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -56,9 +56,7 @@ def test_platform_oauth_redirect_and_callback(monkeypatch: pytest.MonkeyPatch) -
         query = parse_qs(authorization_url.query)
         assert authorization_url.netloc == "github.com"
         assert query["client_id"] == ["client-id"]
-        assert query["redirect_uri"] == [
-            "http://127.0.0.1:18080/dashboard/api/auth/callback"
-        ]
+        assert query["redirect_uri"] == ["http://127.0.0.1:18080/dashboard/api/auth/callback"]
 
         callback_response = client.get(
             "/dashboard/api/auth/callback",

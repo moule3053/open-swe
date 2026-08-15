@@ -10,19 +10,19 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-OPEN_SWE_BOT_NAME = "open-swe[bot]"
-# Use the open-swe user noreply address: the bot's numeric noreply
-# (215916821+open-swe[bot]@...) doesn't resolve to a GitHub account Vercel
+ALEPHAT_BOT_NAME = "alephat[bot]"
+# Use the alephat user noreply address: the bot's numeric noreply
+# (215916821+alephat[bot]@...) doesn't resolve to a GitHub account Vercel
 # accepts, which broke preview deploys on commits carrying this co-author.
-OPEN_SWE_BOT_EMAIL = "open-swe@users.noreply.github.com"
+ALEPHAT_BOT_EMAIL = "alephat@users.noreply.github.com"
 
-PR_ATTRIBUTION_TEXT = "Made by [Open SWE]"
-PR_ATTRIBUTION_DEFAULT_URL = "https://openswe.vercel.app"
+PR_ATTRIBUTION_TEXT = "Made by [Alephat]"
+PR_ATTRIBUTION_DEFAULT_URL = "https://github.com/moule3053/alephat"
 PR_ATTRIBUTION_FOOTER = f"{PR_ATTRIBUTION_TEXT}({PR_ATTRIBUTION_DEFAULT_URL})"
 
 
 def build_pr_attribution_footer(thread_url: str | None = None) -> str:
-    """Build the Open SWE PR footer, linking the run's thread when available."""
+    """Build the Alephat PR footer, linking the run's thread when available."""
     url = thread_url.strip() if isinstance(thread_url, str) and thread_url.strip() else ""
     return f"{PR_ATTRIBUTION_TEXT}({url or PR_ATTRIBUTION_DEFAULT_URL})"
 
@@ -85,7 +85,7 @@ def _identity_from_github_token(github_token: str | None) -> CollaboratorIdentit
         )
         if not display_name or not commit_email:
             return None
-        if commit_email == OPEN_SWE_BOT_EMAIL and display_name == OPEN_SWE_BOT_NAME:
+        if commit_email == ALEPHAT_BOT_EMAIL and display_name == ALEPHAT_BOT_NAME:
             return None
         return CollaboratorIdentity(
             display_name=display_name,
@@ -152,13 +152,13 @@ def resolve_triggering_user_identity(
 
 
 def add_bot_coauthor_trailer(commit_message: str) -> str:
-    """Append the open-swe[bot] Co-authored-by trailer.
+    """Append the alephat[bot] Co-authored-by trailer.
 
     Commits are authored by the triggering user (via the repo-local git
-    identity); open-swe[bot] is credited as the collaborator.
+    identity); alephat[bot] is credited as the collaborator.
     """
     normalized_message = commit_message.rstrip()
-    trailer = f"Co-authored-by: {OPEN_SWE_BOT_NAME} <{OPEN_SWE_BOT_EMAIL}>"
+    trailer = f"Co-authored-by: {ALEPHAT_BOT_NAME} <{ALEPHAT_BOT_EMAIL}>"
     if trailer in normalized_message:
         return normalized_message
     return f"{normalized_message}\n\n{trailer}"
@@ -169,9 +169,9 @@ def add_pr_collaboration_note(
     identity: CollaboratorIdentity | None = None,
     thread_url: str | None = None,
 ) -> str:
-    """Append the Open SWE attribution footer to a PR body.
+    """Append the Alephat attribution footer to a PR body.
 
-    The PR is opened as the triggering user, so the body only credits Open SWE
+    The PR is opened as the triggering user, so the body only credits Alephat
     as the collaborator. The footer links the run's thread when available. Any
     legacy double-attribution footer is replaced.
     """
@@ -186,9 +186,9 @@ def add_pr_collaboration_note(
     legacy_footers: list[str] = []
     if identity is not None:
         legacy_footers.append(
-            f"_Opened collaboratively by {identity.pr_attribution_name} and open-swe._"
+            f"_Opened collaboratively by {identity.pr_attribution_name} and alephat._"
         )
-        legacy_footers.append(f"_Opened collaboratively by {identity.display_name} and open-swe._")
+        legacy_footers.append(f"_Opened collaboratively by {identity.display_name} and alephat._")
     for legacy in legacy_footers:
         if legacy in normalized_body:
             return normalized_body.replace(legacy, note)

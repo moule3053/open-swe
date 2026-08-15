@@ -1,9 +1,9 @@
 ---
 type: Operations and Quality Guide
 title: Development, deployment, tests, and reviewer evaluation
-description: Operational guide to Open SWE local runtime commands, CI, end-to-end verification, reviewer benchmarks, sandbox image maintenance, and scheduled automation.
+description: Operational guide to Alephat local runtime commands, CI, end-to-end verification, reviewer benchmarks, sandbox image maintenance, and scheduled automation.
 resource: /Makefile
-tags: [open-swe, operations, testing, ci, evaluation, deployment]
+tags: [alephat, operations, testing, ci, evaluation, deployment]
 ---
 # Development, deployment, tests, and reviewer evaluation
 

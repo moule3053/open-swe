@@ -1,5 +1,5 @@
-DASHBOARD_HANDOFF_OPEN_TAG = "<open_swe_web_handoff>"
-DASHBOARD_HANDOFF_CLOSE_TAG = "</open_swe_web_handoff>"
+DASHBOARD_HANDOFF_OPEN_TAG = "<alephat_web_handoff>"
+DASHBOARD_HANDOFF_CLOSE_TAG = "</alephat_web_handoff>"
 DASHBOARD_HANDOFF_MARKER = DASHBOARD_HANDOFF_OPEN_TAG
 DASHBOARD_HANDOFF_BODY = (
     "This follow-up was sent from Web. The conversation has moved to Web, so answer in "

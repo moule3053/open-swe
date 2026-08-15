@@ -232,7 +232,7 @@ interface ChatState {
 }
 
 function storageKey(owner: string, repo: string, number: number): string {
-  return `osw:review-chat:${owner}/${repo}/${number}`
+  return `alephat:review-chat:${owner}/${repo}/${number}`
 }
 
 function newDraft(): Conversation {
